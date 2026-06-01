@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('credit_notes', function (Blueprint $table) {
-            $table->enum('status', ['Unused', 'Partially Used', 'Used', 'Credit Applied'])
-                  ->default('Unused')
-                  ->change();
+            $table->string('status', 255)->default('Unused')->change();
         });
     }
 
