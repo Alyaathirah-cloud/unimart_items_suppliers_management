@@ -12,17 +12,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // First, expand the enum to include both old and new values
-        Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->enum('status', ['Pending', 'Approved', 'Rejected', 'draft', 'sent', 'received', 'partial', 'cancelled'])->default('draft')->change();
-        });
-
-        // Then update existing statuses
+        // Update existing statuses first (before changing column type)
         DB::statement("UPDATE purchase_orders SET status = CASE 
             WHEN status = 'Pending' THEN 'draft' 
             WHEN status = 'Approved' THEN 'sent' 
             WHEN status = 'Rejected' THEN 'cancelled' 
             ELSE status END");
+
+        // Change status column to string (PostgreSQL compatible)
+        Schema::table('purchase_orders', function (Blueprint $table) {
+            $table->string('status', 255)->default('draft')->change();
+        });
 
         // Add new columns
         Schema::table('purchase_orders', function (Blueprint $table) {
