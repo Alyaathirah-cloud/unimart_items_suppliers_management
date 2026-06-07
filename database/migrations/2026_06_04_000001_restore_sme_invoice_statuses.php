@@ -7,6 +7,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'mysql') return;
+
         DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed','Pending','Settled','Paid') NOT NULL DEFAULT 'Active'");
 
         DB::statement("UPDATE invoices SET status = 'Active' WHERE status = 'Pending'");
@@ -18,6 +21,9 @@ return new class extends Migration
 
     public function down(): void
     {
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'mysql') return;
+
         DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed','Pending','Settled','Paid') NOT NULL DEFAULT 'Pending'");
 
         DB::statement("UPDATE invoices SET status = 'Pending' WHERE status = 'Active'");

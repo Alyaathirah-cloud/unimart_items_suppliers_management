@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add pending, settled, paid to the invoice status enum
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed','pending','settled','paid') NOT NULL DEFAULT 'pending'");
+        // Add pending, settled, paid to the invoice status enum (MySQL only — PostgreSQL uses varchar)
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed','pending','settled','paid') NOT NULL DEFAULT 'pending'");
+        }
     }
 
     /**
@@ -20,7 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert to original SME invoice statuses
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed') NOT NULL DEFAULT 'Active'");
+        // Revert to original SME invoice statuses (MySQL only)
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('Active','Partially Credited','Overdue','Closed') NOT NULL DEFAULT 'Active'");
+        }
     }
 };
