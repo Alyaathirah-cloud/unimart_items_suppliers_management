@@ -66,13 +66,16 @@ class ItemController extends Controller
             }
         }
 
+        $today = now()->format('Y-m-d');
+        $warningDate = now()->addDays($warningDays)->format('Y-m-d');
+
         $items = $query
             ->orderByRaw("CASE
-                WHEN expiry_date IS NOT NULL AND DATE(expiry_date) < CURDATE() THEN 0
+                WHEN expiry_date IS NOT NULL AND DATE(expiry_date) < ? THEN 0
                 WHEN quantity <= reorder_point THEN 1
-                WHEN expiry_date IS NOT NULL AND DATE(expiry_date) <= DATE_ADD(CURDATE(), INTERVAL ? DAY) AND DATE(expiry_date) >= CURDATE() THEN 2
+                WHEN expiry_date IS NOT NULL AND DATE(expiry_date) <= ? AND DATE(expiry_date) >= ? THEN 2
                 ELSE 3
-            END", [$warningDays])
+            END", [$today, $warningDate, $today])
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
