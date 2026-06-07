@@ -366,7 +366,7 @@ class SupplierController extends Controller
         $hasCreditNote = \App\Models\CreditNote::where('return_id', $return->id)->exists();
         if ($request->status === 'Approved' && !$hasCreditNote) {
 
-            // Save per-line approved quantities
+            // Save per-line approved quantities and calculate credit amount based on INVOICE lines
             $lineItems    = $return->lines()->with('item')->get();
             $creditAmount = 0;
 
@@ -381,7 +381,14 @@ class SupplierController extends Controller
                         }
                     }
                 }
-                $approvedSubtotal = round($approvedQty * (float)$line->unit_price, 2);
+
+                // Retrieve the unit price from the linked invoice line
+                $invoiceLine = \App\Models\InvoiceLine::where('invoice_id', $return->invoice_id)
+                    ->where('item_id', $line->item_id)
+                    ->first();
+                $unitPrice = $invoiceLine ? (float)$invoiceLine->unit_price : 0;
+
+                $approvedSubtotal = round($approvedQty * $unitPrice, 2);
                 $line->update([
                     'approved_qty'      => $approvedQty,
                     'approved_subtotal' => $approvedSubtotal,
@@ -422,13 +429,18 @@ class SupplierController extends Controller
             foreach ($lineItems as $line) {
                 if (!$line->item || $line->approved_qty <= 0) continue;
 
+                $invoiceLine = \App\Models\InvoiceLine::where('invoice_id', $return->invoice_id)
+                    ->where('item_id', $line->item_id)
+                    ->first();
+                $unitPrice = $invoiceLine ? (float)$invoiceLine->unit_price : 0;
+
                 \App\Models\CreditNoteItem::create([
                     'credit_note_id'         => $creditNote->id,
                     'return_request_line_id' => $line->id,
                     'item_id'                => $line->item_id,
                     'quantity'               => $line->approved_qty,
                     'uom'                    => $line->uom,
-                    'unit_price'             => $line->unit_price,
+                    'unit_price'             => $unitPrice,
                     'subtotal'               => $line->approved_subtotal,
                 ]);
 
@@ -444,9 +456,9 @@ class SupplierController extends Controller
                 }
             }
 
-            // Update the linked invoice status to Partially Credited
+            // Update the linked invoice status to settled
             if ($return->invoice && $creditAmount > 0) {
-                $return->invoice->update(['status' => 'Partially Credited']);
+                $return->invoice->update(['status' => 'settled']);
             }
         }
 

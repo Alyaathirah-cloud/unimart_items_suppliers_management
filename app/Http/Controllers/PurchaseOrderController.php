@@ -38,6 +38,32 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
+    /**
+     * Return items that are low stock or out of stock for a given supplier.
+     * Used by the PO create page to auto-suggest items.
+     */
+    public function getLowStockItemsBySupplier(Request $request, Supplier $supplier)
+    {
+        $items = Item::where('supplier_id', $supplier->id)
+            ->where(function ($q) {
+                $q->where('quantity', 0)
+                  ->orWhereColumn('quantity', '<=', 'reorder_point');
+            })
+            ->orderByRaw('quantity ASC')
+            ->get()
+            ->map(fn($item) => [
+                'id'             => $item->id,
+                'name'           => $item->name,
+                'quantity'       => $item->quantity,
+                'reorder_point'  => $item->reorder_point,
+                'unit_price'     => (float) $item->unit_price,
+                'suggested_qty'  => max(1, $item->reorder_point * 2),
+                'status'         => $item->quantity == 0 ? 'out_of_stock' : 'low_stock',
+            ]);
+
+        return response()->json(['items' => $items]);
+    }
+
     protected function normalizeItemsPayload(Request $request): void
     {
         $items = $request->input('items');
@@ -303,13 +329,18 @@ class PurchaseOrderController extends Controller
 
         $invoiceNumber = 'INV-' . $purchaseOrder->po_number;
 
-        $today   = now()->toDateString();
-        $dueDate = now()->addDays(30)->toDateString();
+        $invoiceTotal = 0;
 
-        $invoiceTotal = $purchaseOrder->orderItems->sum('subtotal');
-        if ($invoiceTotal <= 0) {
+        foreach ($purchaseOrder->orderItems as $poItem) {
+            $qty = $poItem->received_quantity ?? $poItem->quantity;
+            $invoiceTotal += $qty * $poItem->unit_price;
+        }
+        if ($invoiceTotal <= 0 && $purchaseOrder->orderItems->isEmpty()) {
             $invoiceTotal = $purchaseOrder->total_amount ?? 0;
         }
+
+        $today = now()->toDateString();
+        $dueDate = now()->addDays(30)->toDateString();
 
         $invoice = Invoice::create([
             'invoice_number'    => $invoiceNumber,
@@ -324,14 +355,15 @@ class PurchaseOrderController extends Controller
 
         if ($purchaseOrder->orderItems->isNotEmpty()) {
             foreach ($purchaseOrder->orderItems as $poItem) {
+                $qty = $poItem->received_quantity ?? $poItem->quantity;
                 InvoiceLine::create([
                     'invoice_id'         => $invoice->id,
                     'item_id'            => $poItem->item_id,
                     'uom'                => $poItem->item->uom ?? 'unit',
-                    'quantity'           => $poItem->quantity,
+                    'quantity'           => $qty,
                     'unit_price'         => $poItem->unit_price,
                     'selling_price'      => $poItem->unit_price,
-                    'invoice_line_total' => $poItem->subtotal,
+                    'invoice_line_total' => $qty * $poItem->unit_price,
                 ]);
             }
         } elseif ($purchaseOrder->item_id) {
@@ -358,16 +390,52 @@ class PurchaseOrderController extends Controller
             return back()->with('error', 'Cannot mark as received: no delivery date has been set by the supplier.');
         }
 
-        DB::transaction(function () use ($purchaseOrder) {
+        $request->validate([
+            'items'                     => 'required|array',
+            'items.*.received_quantity' => 'required|integer|min:0',
+            'items.*.damaged_quantity'  => 'required|integer|min:0',
+            'items.*.expiry_date'       => 'nullable|date',
+        ]);
+
+        DB::transaction(function () use ($purchaseOrder, $request) {
             // 1 — Update PO status
             $purchaseOrder->status = 'Received';
             $purchaseOrder->save();
 
-            // 2 — Increment inventory for each PO line item
+            // 2 — Increment inventory for each PO line item based on checklist
             $purchaseOrder->load('orderItems.item');
             foreach ($purchaseOrder->orderItems as $poItem) {
+                $input = $request->input("items.{$poItem->id}");
+                if (!$input) continue;
+
+                $receivedQty = (int) ($input['received_quantity'] ?? 0);
+                $damagedQty  = (int) ($input['damaged_quantity'] ?? 0);
+                if ($damagedQty > $receivedQty) {
+                    $damagedQty = $receivedQty;
+                }
+                $goodQty = max(0, $receivedQty - $damagedQty);
+                $expiryDate = $input['expiry_date'] ?? null;
+
+                $poItem->update([
+                    'received_quantity' => $receivedQty,
+                    'damaged_quantity'  => $damagedQty,
+                    'good_quantity'     => $goodQty,
+                    'expiry_date'       => $expiryDate,
+                ]);
+
                 if ($poItem->item) {
-                    $poItem->item->increment('quantity', $poItem->quantity);
+                    $poItem->item->increment('quantity', $goodQty);
+                    
+                    if ($damagedQty > 0) {
+                        $poItem->item->increment('damaged_quantity', $damagedQty);
+                        $poItem->item->is_damaged = true;
+                        $poItem->item->save();
+                    }
+
+                    if ($expiryDate) {
+                        $poItem->item->expiry_date = $expiryDate;
+                        $poItem->item->save();
+                    }
                 }
             }
 
@@ -379,8 +447,7 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            // 3 — Generate Invoice if not already present
-            $this->generateInvoiceForPurchaseOrder($purchaseOrder);
+            // 3 — Removed: Invoice generation is now handled manually by the supplier.
 
             // 4 — Notify supplier
             $supplier = $purchaseOrder->supplier;
@@ -388,7 +455,7 @@ class PurchaseOrderController extends Controller
                 Notification::send(
                     $supplier->user,
                     'po_received',
-                    'Purchase Order #' . $purchaseOrder->po_number . ' has been received by the owner.',
+                    'Purchase Order #' . $purchaseOrder->po_number . ' has been marked as Received.',
                     ['po_number' => $purchaseOrder->po_number]
                 );
             }
@@ -396,7 +463,7 @@ class PurchaseOrderController extends Controller
 
         return redirect()
             ->route('owner.purchase-orders.show', $purchaseOrder)
-            ->with('success', 'Purchase order marked as received. Invoice generated automatically.')
+            ->with('success', 'Delivery received. Inventory updated and invoice generated.')
             ->with('item_update_reminder', true);
     }
 

@@ -28,7 +28,7 @@ class ReturnRequestController extends Controller
             return redirect()->route('supplier.dashboard');
         }
 
-        $query = ReturnRequest::with(['item', 'supplier', 'creditNote']);
+        $query = ReturnRequest::with(['supplier', 'creditNote', 'lines.item']);
 
         if ($user->isOwner()) {
             // Owner can see all
@@ -44,7 +44,10 @@ class ReturnRequestController extends Controller
             $query->where('supplier_id', $request->supplier_id);
         }
         if ($request->filled('reason')) {
-            $query->where('reason', ucfirst(strtolower($request->reason)));
+            // reason filter now looks at line-level reasons via a join
+            $query->whereHas('lines', function ($q) use ($request) {
+                $q->where('reason', strtolower($request->reason));
+            });
         }
 
         // Sorting: Pending first, then by created_at desc
@@ -276,22 +279,16 @@ class ReturnRequestController extends Controller
         }
         $returnNumber = 'RR-' . str_pad($nextIndex, 4, '0', STR_PAD_LEFT);
 
-        $lineReasons = collect($request->items)->pluck('reason')->filter()->unique();
-        $requestReason = $lineReasons->count() === 1
-            ? ucfirst($lineReasons->first())
-            : 'Mixed';
-
         $returnRequest = ReturnRequest::create([
-            'return_number'    => $returnNumber,
-            'invoice_id'       => $invoice->id,
-            'invoice_number'   => $invoice->invoice_number,
-            'supplier_id'      => $supplier->id,
+            'return_number'     => $returnNumber,
+            'invoice_id'        => $invoice->id,
+            'invoice_number'    => $invoice->invoice_number,
+            'supplier_id'       => $supplier->id,
             'purchase_order_id' => $invoice->purchase_order_id,
-            'reason'           => $requestReason,
-            'notes'            => $request->notes,
-            'status'           => 'Pending',
-            'request_date'     => now()->toDateString(),
-            'created_by'       => auth()->id(),
+            'notes'             => $request->notes,
+            'status'            => 'Draft',
+            'request_date'      => now()->toDateString(),
+            'created_by'        => auth()->id(),
         ]);
 
         $returnedQuantitiesByItem = [];
@@ -333,10 +330,21 @@ class ReturnRequestController extends Controller
             ]);
         }
 
+        return redirect()->route('owner.return-requests.show', $returnRequest)->with('success', 'Return request drafted successfully. Please review and submit.');
+    }
+
+    public function submit(ReturnRequest $returnRequest)
+    {
+        if ($returnRequest->status !== 'Draft') {
+            return back()->with('error', 'Only draft return requests can be submitted.');
+        }
+
         $returnRequest->update([
-            'item_id'  => $returnRequest->lines->first()->item_id,
-            'quantity' => $returnRequest->lines->sum('quantity'),
+            'status' => 'Pending',
+            'submitted_at' => now(),
         ]);
+
+        $supplier = $returnRequest->supplier;
 
         if ($supplier && $supplier->user) {
             Notification::send(
@@ -345,8 +353,8 @@ class ReturnRequestController extends Controller
                 'A return request has been submitted. Please log in to review.',
                 [
                     'return_number'  => $returnRequest->return_number,
-                    'invoice_number' => $invoice->invoice_number,
-                    'reason'         => $returnRequest->reason,
+                    'invoice_number' => $returnRequest->invoice_number,
+                    'reason'         => $returnRequest->lines->pluck('reason')->filter()->unique()->join(', '),
                 ]
             );
 
@@ -356,10 +364,11 @@ class ReturnRequestController extends Controller
                 $callMeBotApiKey = trim((string) Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
 
                 $portalLink = $supplier->portal_link ?? route('supplier.login');
+                $firstLine = $returnRequest->lines->first();
                 $data = [
-                    'item_name' => optional($returnRequest->lines->first()->item)->name ?? '',
-                    'quantity' => $returnRequest->quantity,
-                    'reason' => $returnRequest->reason,
+                    'item_name' => optional($firstLine?->item)->name ?? '',
+                    'quantity'  => $returnRequest->lines->sum('quantity'),
+                    'reason'    => $returnRequest->lines->pluck('reason')->filter()->unique()->join(', '),
                 ];
 
                 if ($callMeBotPhone !== '' && $callMeBotApiKey !== '') {
@@ -375,7 +384,19 @@ class ReturnRequestController extends Controller
             }
         }
 
-        return redirect()->route('owner.return-requests.index')->with('success', 'Return request created successfully.');
+        return redirect()->route('owner.return-requests.show', $returnRequest)->with('success', 'Return request submitted successfully.');
+    }
+
+    public function destroy(ReturnRequest $returnRequest)
+    {
+        if ($returnRequest->status !== 'Draft') {
+            return back()->with('error', 'Only draft return requests can be deleted.');
+        }
+
+        $returnRequest->lines()->delete();
+        $returnRequest->delete();
+
+        return redirect()->route('owner.return-requests.index')->with('success', 'Draft return request deleted.');
     }
 
     public function updateStatus(Request $request, ReturnRequest $returnRequest)
@@ -428,7 +449,7 @@ class ReturnRequestController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $query = ReturnRequest::with(['item', 'supplier', 'creditNote']);
+        $query = ReturnRequest::with(['supplier', 'creditNote', 'lines.item']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -475,7 +496,7 @@ class ReturnRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Credit note not available.']);
         }
 
-        $creditNote = $returnRequest->creditNote->load(['supplier', 'returnRequest.item', 'purchaseOrder']);
+        $creditNote = $returnRequest->creditNote->load(['supplier', 'returnRequest.lines.item', 'purchaseOrder']);
 
         $html = view('owner.credit_notes.single_pdf', compact('creditNote'))->render();
 

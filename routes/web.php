@@ -20,7 +20,7 @@ Route::get('/', function () {
 
 // Keep backward compatibility: /home used by some auth scaffolding. Redirect to role dashboards.
 Route::get('/home', function () {
-    $user = auth()->user();
+    $user = auth()->user() ?? auth('supplier')->user();
     if (! $user) {
         return redirect('/');
     }
@@ -31,33 +31,41 @@ Route::get('/home', function () {
         return redirect('/owner/dashboard');
     }
     if (method_exists($user, 'isSupplier') && $user->isSupplier()) {
+        Auth::guard('web')->logout();
+        Auth::guard('supplier')->login($user);
+        session()->regenerate();
         return redirect('/supplier/dashboard');
     }
     return redirect('/');
-})->name('home')->middleware('auth');
+})->name('home')->middleware('auth:web,supplier');
 // authentication routes (if using Laravel Breeze/Jetstream, register accordingly)
 Auth::routes();
 Route::post('logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])
     ->name('logout')
     ->middleware('auth:web,supplier');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth:web,supplier'])->group(function () {
     Route::get('password/force-change', [App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'show'])->name('password.force-change');
     Route::post('password/force-change', [App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'update'])->name('password.force-change.update');
 });
 
 // General dashboard route (fallback)
 Route::get('/dashboard', function () {
-    $user = auth()->user();
+    $user = auth()->user() ?? auth('supplier')->user();
+    if (!$user) return redirect('/');
+    
     if ($user->isAdmin()) {
         return redirect('/admin/users');
     } elseif ($user->isOwner()) {
         return redirect('/owner/items');
     } elseif ($user->isSupplier()) {
+        Auth::guard('web')->logout();
+        Auth::guard('supplier')->login($user);
+        session()->regenerate();
         return redirect('/supplier/dashboard');
     }
     return redirect('/');
-})->middleware('auth')->name('dashboard');
+})->middleware('auth:web,supplier')->name('dashboard');
 
 // Admin section
 Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group(function () {
@@ -95,15 +103,18 @@ Route::prefix('owner')->name('owner.')->middleware(['auth','role:owner'])->group
     Route::get('purchase-orders/{purchase_order}/invoice-status', [App\Http\Controllers\PurchaseOrderController::class, 'invoiceStatus'])->name('purchase-orders.invoice-status');
     Route::get('purchase-orders/export-csv', [App\Http\Controllers\PurchaseOrderController::class, 'exportCsv'])->name('purchase-orders.export-csv');
     Route::get('purchase-orders/generate', [App\Http\Controllers\PurchaseOrderController::class, 'generateForLowStock']);
-    Route::resource('return-requests', App\Http\Controllers\ReturnRequestController::class)->only(['index','create','store','show']);
+    Route::get('purchase-orders/low-stock-items/{supplier}', [App\Http\Controllers\PurchaseOrderController::class, 'getLowStockItemsBySupplier'])->name('purchase-orders.low-stock-items');
+    Route::resource('return-requests', App\Http\Controllers\ReturnRequestController::class)->only(['index','create','store','show','destroy']);
+    Route::patch('return-requests/{returnRequest}/submit', [App\Http\Controllers\ReturnRequestController::class, 'submit'])->name('return-requests.submit');
     Route::get('return-requests/export-pdf', [App\Http\Controllers\ReturnRequestController::class, 'exportPdf'])->name('return-requests.export-pdf');
     Route::get('return-requests/{returnRequest}/credit-note', [App\Http\Controllers\ReturnRequestController::class, 'getCreditNote'])->name('return-requests.credit-note');
     Route::get('credit-notes', [App\Http\Controllers\Owner\CreditNoteController::class, 'index'])->name('credit-notes.index');
     Route::get('credit-notes/export-pdf', [App\Http\Controllers\Owner\CreditNoteController::class, 'exportPdf'])->name('credit-notes.export-pdf');
     Route::get('credit-notes/{creditNote}', [App\Http\Controllers\Owner\CreditNoteController::class, 'show'])->name('credit-notes.show');
     Route::get('credit-notes/{creditNote}/export-pdf', [App\Http\Controllers\Owner\CreditNoteController::class, 'exportSinglePdf'])->name('credit-notes.export-single-pdf');
-    Route::resource('invoices', App\Http\Controllers\Owner\InvoiceController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::resource('invoices', App\Http\Controllers\Owner\InvoiceController::class)->only(['index','create','store','show','destroy']);
     Route::get('invoices/{invoice}/export-pdf', [App\Http\Controllers\Owner\InvoiceController::class, 'exportPdf'])->name('invoices.export-pdf');
+    Route::patch('invoices/{invoice}/mark-paid', [App\Http\Controllers\Owner\InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
     Route::resource('direct-purchases', App\Http\Controllers\DirectPurchaseController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/mark-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAll');
@@ -132,6 +143,7 @@ Route::prefix('supplier')->name('supplier.')->group(function () {
         Route::get('credit-notes/{creditNote}', [App\Http\Controllers\SupplierController::class, 'creditNoteShow'])->name('credit-notes.show');
         Route::get('credit-notes/{creditNote}/export-pdf', [App\Http\Controllers\SupplierController::class, 'exportSinglePdf'])->name('credit-notes.export-single-pdf');
         Route::get('invoices', [App\Http\Controllers\SupplierController::class, 'invoices'])->name('invoices.index');
+        Route::get('invoices/{invoice}', [App\Http\Controllers\SupplierController::class, 'invoiceShow'])->name('invoices.show');
         Route::get('invoices/{invoice}/export-pdf', [App\Http\Controllers\SupplierController::class, 'exportInvoicePdf'])->name('invoices.export-pdf');
         Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
         Route::post('notifications/mark-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAll');

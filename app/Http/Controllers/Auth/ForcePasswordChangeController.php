@@ -10,7 +10,8 @@ class ForcePasswordChangeController extends Controller
 {
     public function show()
     {
-        if (!auth()->user()->must_change_password) {
+        $user = auth()->user() ?? auth('supplier')->user();
+        if (!$user || !$user->must_change_password) {
             return redirect('/home');
         }
         return view('auth.force-password-change');
@@ -22,7 +23,7 @@ class ForcePasswordChangeController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = auth()->user();
+        $user = auth()->user() ?? auth('supplier')->user();
         
         $user->update([
             'password' => Hash::make($request->password),

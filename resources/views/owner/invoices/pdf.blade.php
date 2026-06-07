@@ -28,6 +28,16 @@
         <div class="supplier">
             <h3>Supplier Information</h3>
             <p><strong>{{ $invoice->supplier->name }}</strong></p>
+            @if($invoice->supplier->address_line_1 || $invoice->supplier->city || $invoice->supplier->country)
+                <p>
+                    {{ $invoice->supplier->address_line_1 }}<br>
+                    @if($invoice->supplier->address_line_2){{ $invoice->supplier->address_line_2 }}<br>@endif
+                    @if($invoice->supplier->city || $invoice->supplier->postal_code)
+                        {{ $invoice->supplier->postal_code }} {{ $invoice->supplier->city }}@if($invoice->supplier->state), {{ $invoice->supplier->state }}@endif<br>
+                    @endif
+                    {{ $invoice->supplier->country }}
+                </p>
+            @endif
             <p>{{ $invoice->supplier->contact_email }}</p>
             <p>{{ $invoice->supplier->contact_phone }}</p>
 

@@ -191,6 +191,14 @@
                 </select>
                 @endif
 
+                <select name="status" class="filter-select">
+                    <option value="">All Statuses</option>
+                    <option value="Active" {{ request('status') == 'Active' ? 'selected' : '' }}>Active</option>
+                    <option value="Partially Credited" {{ request('status') == 'Partially Credited' ? 'selected' : '' }}>Partially Credited</option>
+                    <option value="Overdue" {{ request('status') == 'Overdue' ? 'selected' : '' }}>Overdue</option>
+                    <option value="Closed" {{ request('status') == 'Closed' ? 'selected' : '' }}>Closed</option>
+                </select>
+
                 <button type="submit" class="filter-btn">Apply Filters</button>
                 <a href="{{ route('owner.invoices.index') }}" class="filter-clear">Clear</a>
 

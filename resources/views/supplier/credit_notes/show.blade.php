@@ -206,19 +206,21 @@
                         @endphp
                         @if($items->isEmpty())
                             @php
-                                $item = $creditNote->returnRequest->item ?? null;
-                                $qty  = $creditNote->returnRequest->quantity ?? 0;
-                                $unitPrice = $item ? ($item->unit_price ?? 0) : 0;
+                                $fallbackLines = $creditNote->returnRequest?->lines ?? collect();
+                                $fallbackFirst = $fallbackLines->first();
+                                $item = $fallbackFirst?->item ?? null;
+                                $qty  = $fallbackLines->sum('quantity');
+                                $unitPrice = $fallbackFirst ? (float)($fallbackFirst->unit_price ?? 0) : 0;
                             @endphp
                             <tr>
                                 <td style="color:#9daec5;font-size:0.8rem;">01</td>
                                 <td>
-                                    <div style="font-weight:600;color:#0f2044;">{{ $item->name ?? '—' }}</div>
+                                    <div style="font-weight:600;color:#0f2044;">{{ $item?->name ?? '—' }}</div>
                                     @if($item && $item->category)
                                         <div style="font-size:0.75rem;color:#9daec5;margin-top:2px;">{{ $item->category }}</div>
                                     @endif
                                 </td>
-                                <td style="text-align:right;">{{ optional($creditNote->returnRequest)->reason ?? '—' }}</td>
+                                <td style="text-align:right;">{{ optional($fallbackFirst)->reason ?? '—' }}</td>
                                 <td style="text-align:right;">{{ number_format($unitPrice, 2) }}</td>
                                 <td style="text-align:right;">{{ number_format($qty) }}</td>
                                 <td>RM {{ number_format($creditNote->amount, 2) }}</td>
@@ -233,7 +235,7 @@
                                             <div style="font-size:0.75rem;color:#9daec5;margin-top:2px;">{{ $creditItem->item->category }}</div>
                                         @endif
                                     </td>
-                                    <td style="text-align:right;text-transform:capitalize;">{{ optional($creditItem->returnRequestLine)->reason ?? optional($creditNote->returnRequest)->reason ?? '—' }}</td>
+                                    <td style="text-align:right;text-transform:capitalize;">{{ optional($creditItem->returnRequestLine)->reason ?? '—' }}</td>
                                     <td style="text-align:right;">{{ number_format($creditItem->unit_price, 2) }}</td>
                                     <td style="text-align:right;">{{ number_format($creditItem->quantity) }}</td>
                                     <td>RM {{ number_format($creditItem->subtotal, 2) }}</td>
@@ -247,16 +249,16 @@
                 <div class="summary-row" style="margin-top:20px;">
                     <div class="summary-box">
                         <div class="summary-line">
-                            <span class="s-label">Subtotal</span>
-                            <span class="s-val">RM {{ number_format($creditNote->amount, 2) }}</span>
+                            <span class="s-label">Original Invoice Total</span>
+                            <span class="s-val">RM {{ number_format(optional($creditNote->invoice)->total_amount ?? 0, 2) }}</span>
                         </div>
-                        <div class="summary-line remaining">
-                            <span class="s-label">Remaining Balance</span>
-                            <span class="s-val">RM {{ number_format($creditNote->remaining_balance, 2) }}</span>
+                        <div class="summary-line">
+                            <span class="s-label">Total Credit Amount</span>
+                            <span class="s-val" style="color: #c0392b;">- RM {{ number_format($creditNote->totalAmount(), 2) }}</span>
                         </div>
                         <div class="summary-line total">
-                            <span class="s-label">Nett Total</span>
-                            <span class="s-val">RM {{ number_format($creditNote->amount, 2) }}</span>
+                            <span class="s-label">Net to Pay</span>
+                            <span class="s-val">RM {{ number_format(max(0, (optional($creditNote->invoice)->total_amount ?? 0) - $creditNote->totalAmount()), 2) }}</span>
                         </div>
                     </div>
                 </div>
@@ -274,10 +276,16 @@
                     <div class="info-label">Return Reason</div>
                     <div class="info-value">
                         @if($creditNote->returnRequest)
-                            @if($creditNote->returnRequest->reason === 'Expired')
+                            @php
+                                $lineReasons = $creditNote->returnRequest->lines->pluck('reason')->filter()->unique();
+                                $reasonDisplay = $lineReasons->count() === 1 ? ucfirst($lineReasons->first()) : ($lineReasons->count() > 1 ? 'Mixed' : null);
+                            @endphp
+                            @if($reasonDisplay === 'Expired')
                                 <span class="badge-reason badge-expired">⏰ Expired</span>
-                            @elseif($creditNote->returnRequest->reason === 'Damaged')
+                            @elseif($reasonDisplay === 'Damaged')
                                 <span class="badge-reason badge-damaged">⚠ Damaged</span>
+                            @elseif($reasonDisplay)
+                                <span style="color:#5a6a85;">{{ $reasonDisplay }}</span>
                             @else
                                 <span style="color:#9daec5;">—</span>
                             @endif

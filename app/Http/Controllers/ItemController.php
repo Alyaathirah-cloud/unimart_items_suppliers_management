@@ -38,8 +38,11 @@ class ItemController extends Controller
 
         if ($status) {
             switch ($status) {
+                case 'out_of_stock':
+                    $query->where('quantity', 0);
+                    break;
                 case 'low_stock':
-                    $query->whereColumn('quantity', '<=', 'reorder_point');
+                    $query->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_point');
                     break;
                 case 'near_expiry':
                     $query->whereNotNull('expiry_date')
@@ -74,7 +77,8 @@ class ItemController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $lowStock   = Item::whereColumn('quantity', '<=', 'reorder_point')->count();
+        $outOfStock = Item::where('quantity', 0)->count();
+        $lowStock   = Item::where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_point')->count();
         $nearExpiry = Item::whereNotNull('expiry_date')
             ->whereDate('expiry_date', '<=', now()->addDays($warningDays))
             ->whereDate('expiry_date', '>=', now())
@@ -88,7 +92,7 @@ class ItemController extends Controller
         )->pluck('item_id')->unique()->values();
 
         return view('owner.items.index', compact(
-            'items', 'lowStock', 'nearExpiry', 'expired',
+            'items', 'outOfStock', 'lowStock', 'nearExpiry', 'expired',
             'categories', 'keyword', 'category', 'status',
             'pendingReturnItemIds'
         ));

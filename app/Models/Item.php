@@ -59,9 +59,15 @@ class Item extends Model
 
     // ── Status checks ────────────────────────────────────────────────────────
 
+    public function isOutOfStock(): bool
+    {
+        return (int) $this->quantity === 0;
+    }
+
     public function isLowStock(): bool
     {
-        return $this->quantity <= $this->reorder_point;
+        // Low stock = at or below ROP but not zero
+        return $this->quantity > 0 && $this->quantity <= $this->reorder_point;
     }
 
     public function isNearExpiry($warningDays = null): bool
@@ -105,10 +111,11 @@ class Item extends Model
     public function statusLabel(): string
     {
         $parts = [];
-        if ($this->isExpired())    $parts[] = 'Expired';
+        if ($this->isExpired())                           $parts[] = 'Expired';
         if ($this->isNearExpiry() && !$this->isExpired()) $parts[] = 'Expiring Soon';
-        if ($this->isLowStock())   $parts[] = 'Low Stock';
-        if ($this->isDamaged())    $parts[] = 'Damaged';
+        if ($this->isOutOfStock())                        $parts[] = 'Out of Stock';
+        elseif ($this->isLowStock())                      $parts[] = 'Low Stock';
+        if ($this->isDamaged())                           $parts[] = 'Damaged';
         return $parts ? implode(' / ', $parts) : 'OK';
     }
 
@@ -116,6 +123,7 @@ class Item extends Model
     {
         if ($this->isExpired())    return 'danger';
         if ($this->isNearExpiry()) return 'warning text-dark';
+        if ($this->isOutOfStock()) return 'danger';
         if ($this->isLowStock())   return 'warning';
         return 'success';
     }

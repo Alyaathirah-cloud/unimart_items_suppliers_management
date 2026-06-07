@@ -96,51 +96,58 @@ class SupplierInviteService
             return ['sent' => false, 'error' => 'Missing supplier phone number.'];
         }
 
-        $endpoint = config('services.whatsapp.endpoint');
-        $token = config('services.whatsapp.token');
-
-        if (empty($endpoint)) {
-            Log::warning('Supplier WhatsApp provider endpoint is not configured.', [
-                'supplier_id' => $supplier->id,
-            ]);
-
-            return ['sent' => false, 'error' => 'WhatsApp provider is not configured.'];
-        }
-
-        $message = implode("\n", [
-            "Hi {$supplier->contact_person ?? $supplier->name},",
-            '',
-            "You have been registered as a supplier on {$companyName} portal.",
-            '',
-            "Login here: {$portalUrl}",
-            "Email: {$supplier->contact_email}",
-            "Password: {$password}",
-            '',
-            'Please change your password after first login.',
-            "For help, contact: {$ownerContact}",
-            '',
-            "Thank you,",
-            $companyName,
-        ]);
-
         try {
-            $response = Http::withToken($token)->post($endpoint, [
-                'to' => $phone,
-                'message' => $message,
-                'supplier_id' => $supplier->id,
-                'supplier_email' => $supplier->contact_email,
-            ]);
-
-            if ($response->failed()) {
-                $error = $response->body();
-                Log::error('Supplier WhatsApp invite failed', [
-                    'supplier_id' => $supplier->id,
-                    'phone' => $phone,
-                    'status' => $response->status(),
-                    'response' => $error,
+            $callMeBotPhone = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
+            $callMeBotApiKey = trim((string) Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
+            
+            if ($callMeBotPhone !== '' && $callMeBotApiKey !== '') {
+                $cb = new \App\Services\CallMeBotService();
+                $cb->sendSupplierInvite($phone, [
+                    'email' => $supplier->contact_email,
+                    'password' => $password,
+                    'portal_url' => $portalUrl,
                 ]);
-
-                return ['sent' => false, 'error' => $error ?: 'WhatsApp invite failed to send.'];
+                return ['sent' => true, 'error' => null];
+            } else {
+                // Fallback to Twilio WhatsAppService if configured
+                $endpoint = config('services.whatsapp.endpoint');
+                if (empty($endpoint) && empty(config('services.twilio.sid'))) {
+                     return ['sent' => false, 'error' => 'WhatsApp provider is not configured.'];
+                }
+                
+                $message = implode("\n", [
+                    "Hi {$supplier->contact_person ?? $supplier->name},",
+                    '',
+                    "You have been registered as a supplier on {$companyName} portal.",
+                    '',
+                    "Login here: {$portalUrl}",
+                    "Email: {$supplier->contact_email}",
+                    "Password: {$password}",
+                    '',
+                    'Please change your password after first login.',
+                    "For help, contact: {$ownerContact}",
+                    '',
+                    "Thank you,",
+                    $companyName,
+                ]);
+                
+                if (class_exists(\App\Services\WhatsAppService::class) && config('services.twilio.sid')) {
+                    $w = new \App\Services\WhatsAppService();
+                    $w->sendMessage($phone, $message);
+                } elseif (!empty($endpoint)) {
+                    $token = config('services.whatsapp.token');
+                    $response = Http::withToken($token)->post($endpoint, [
+                        'to' => $phone,
+                        'message' => $message,
+                        'supplier_id' => $supplier->id,
+                        'supplier_email' => $supplier->contact_email,
+                    ]);
+        
+                    if ($response->failed()) {
+                        $error = $response->body();
+                        return ['sent' => false, 'error' => $error ?: 'WhatsApp invite failed to send.'];
+                    }
+                }
             }
 
             return ['sent' => true, 'error' => null];

@@ -283,7 +283,14 @@
                                 <div class="supplier-email">{{ $note->supplier->contact_email ?? '' }}</div>
                             </td>
                             <td><span class="rr-number">#{{ $note->returnRequest->return_number ?? 'N/A' }}</span></td>
-                            <td style="color:#0f2044;font-weight:500;">{{ $note->returnRequest->item->name ?? '—' }}</td>
+                            <td style="color:#0f2044;font-weight:500;">
+                                @php
+                                    $rrLines = $note->returnRequest?->lines ?? collect();
+                                    $firstItemName = optional($rrLines->first()?->item)->name ?? '—';
+                                    $lineCount = $rrLines->count();
+                                @endphp
+                                {{ $firstItemName }}{{ $lineCount > 1 ? ' +' . ($lineCount - 1) . ' more' : '' }}
+                            </td>
                             <td><span class="amount-val">RM {{ number_format($note->amount, 2) }}</span></td>
                             <td>
                                 @if($note->status === 'Approved')

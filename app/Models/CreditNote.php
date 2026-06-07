@@ -52,4 +52,9 @@ class CreditNote extends Model
     {
         return $this->hasMany(CreditNoteItem::class);
     }
+
+    public function totalAmount()
+    {
+        return $this->items()->sum('subtotal');
+    }
 }

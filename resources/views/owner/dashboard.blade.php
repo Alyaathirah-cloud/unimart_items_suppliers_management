@@ -1,4 +1,4 @@
-﻿@extends('layouts.owner')
+@extends('layouts.owner')
 
 @section('title', 'Owner Dashboard – 22UniMart')
 
@@ -66,7 +66,6 @@
         <input type="text" placeholder="Search inventory, POs...">
     </div>
     <div class="topbar-right">
-        <button class="btn-switch">Switch View</button>
         <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
         <div class="topbar-profile" onclick="toggleProfileDropdown()">
             <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>

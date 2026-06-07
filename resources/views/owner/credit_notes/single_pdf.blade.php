@@ -59,23 +59,49 @@
         <thead>
             <tr>
                 <th>Item Name</th>
-                <th>Quantity Damaged</th>
-                <th>Unit Price</th>
-                <th>Credit Amount</th>
+                <th>Approved Qty</th>
+                <th>Unit Price (RM)</th>
+                <th>Subtotal (RM)</th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ $creditNote->returnRequest->item->name }}</td>
-                <td>{{ $creditNote->returnRequest->quantity }}</td>
-                <td>RM {{ number_format($creditNote->returnRequest->item->unit_price ?? 0, 2) }}</td>
-                <td>RM {{ number_format($creditNote->amount, 2) }}</td>
-            </tr>
+            @php
+                $items = $creditNote->items ?? collect();
+                if($items->isEmpty() && $creditNote->returnRequest) {
+                    $items = $creditNote->returnRequest->lines;
+                }
+            @endphp
+            @forelse($items as $creditItem)
+                @php
+                    $itemName = optional($creditItem->item)->name ?? '—';
+                    $qty = $creditItem->quantity ?? 0;
+                    $unitPrice = $creditItem->unit_price ?? 0;
+                    $subtotal = $creditItem->subtotal ?? 0;
+                @endphp
+                <tr>
+                    <td>{{ $itemName }}</td>
+                    <td>{{ $qty }}</td>
+                    <td>{{ number_format($unitPrice, 2) }}</td>
+                    <td>{{ number_format($subtotal, 2) }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="4">No itemized details available.</td>
+                </tr>
+            @endforelse
         </tbody>
         <tfoot>
             <tr>
+                <th colspan="3" class="total">Original Invoice Total:</th>
+                <th>RM {{ number_format(optional($creditNote->invoice)->total_amount ?? 0, 2) }}</th>
+            </tr>
+            <tr>
                 <th colspan="3" class="total">Total Credit Amount:</th>
-                <th>RM {{ number_format($creditNote->amount, 2) }}</th>
+                <th>- RM {{ number_format($creditNote->totalAmount(), 2) }}</th>
+            </tr>
+            <tr>
+                <th colspan="3" class="total">Net to Pay:</th>
+                <th>RM {{ number_format(max(0, (optional($creditNote->invoice)->total_amount ?? 0) - $creditNote->totalAmount()), 2) }}</th>
             </tr>
         </tfoot>
     </table>

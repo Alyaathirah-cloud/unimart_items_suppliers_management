@@ -211,6 +211,16 @@
                             @php
                                 $itemNames = $rr->lines->pluck('item.name')->filter()->unique();
                                 $firstName = $itemNames->first() ?? optional($rr->item)->name ?? 'N/A';
+                                $returnLines = $rr->lines->map(function($line) {
+                                    return [
+                                        'id' => $line->id,
+                                        'name' => optional($line->item)->name ?? 'Unknown Item',
+                                        'reason' => $line->reason,
+                                        'quantity' => $line->quantity,
+                                        'unit_price' => number_format($line->unit_price, 2, '.', ''),
+                                        'subtotal' => number_format($line->subtotal, 2, '.', ''),
+                                    ];
+                                });
                             @endphp
                             <div class="item-name">{{ $firstName }}</div>
                             <div class="item-cat">{{ $rr->lines->count() > 1 ? $rr->lines->count() . ' returned items' : (optional($rr->item)->category ?? '—') }}</div>
@@ -262,16 +272,7 @@
                                 <div class="action-row">
                                     <button class="btn-approve"
                                         onclick="openApprovalModal({{ $rr->id }}, '{{ $rr->return_number }}', {{ $rr->lines->sum('quantity') }}, '{{ addslashes($rr->lines->pluck('item.name')->filter()->join(', ')) }}', {{ number_format($rr->credit_amount, 2, '.', '') }}, this)"
-                                        data-return-lines='@json($rr->lines->map(function($line) {
-                                            return [
-                                                'id' => $line->id,
-                                                'name' => optional($line->item)->name ?? 'Unknown Item',
-                                                'reason' => $line->reason,
-                                                'quantity' => $line->quantity,
-                                                'unit_price' => number_format($line->unit_price, 2, '.', ''),
-                                                'subtotal' => number_format($line->subtotal, 2, '.', ''),
-                                            ];
-                                        }))'>
+                                        data-return-lines="{{ $returnLines->toJson() }}">
                                         ✔ Approve
                                     </button>
                                     <form action="{{ route('supplier.returns.status', $rr) }}" method="POST" style="display:inline;">

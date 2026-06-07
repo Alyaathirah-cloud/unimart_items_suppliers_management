@@ -238,8 +238,13 @@
                                     @if($s === 'Pending')
                                         <button class="btn btn-approve" onclick="toggleRow('approve-{{ $order->id }}')">✓ Approve</button>
                                         <button class="btn btn-reject" onclick="toggleRow('reject-{{ $order->id }}')">✕ Reject</button>
-                                    @elseif($s === 'Approved' && !$hasDelivery)
-                                        <button class="btn btn-delivery" onclick="toggleRow('delivery-{{ $order->id }}')">📅 Set Delivery</button>
+                                    @elseif($s === 'Approved' || $s === 'Received')
+                                        @if($s === 'Approved' && !$hasDelivery)
+                                            <button class="btn btn-delivery" onclick="toggleRow('delivery-{{ $order->id }}')">📅 Set Delivery</button>
+                                        @endif
+                                        @if($order->invoice)
+                                            <a href="{{ route('supplier.invoices.show', $order->invoice) }}" class="btn" style="border: 1px solid #d1dce8; color: #3a4d6a; background: #fff;">👁 View Invoice</a>
+                                        @endif
                                     @else
                                         <span style="color:#9daec5;font-size:.82rem">—</span>
                                     @endif

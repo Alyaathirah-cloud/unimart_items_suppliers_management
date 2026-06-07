@@ -9,8 +9,9 @@ class NotificationController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        // Middleware is applied in routes/web.php
     }
+
 
     public function index(Request $request)
     {

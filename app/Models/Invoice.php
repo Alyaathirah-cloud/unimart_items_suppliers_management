@@ -76,27 +76,23 @@ class Invoice extends Model
 
     /**
      * Compute the dynamic display status:
-     *  - Closed           → manually closed / paid
-     *  - Partially Credited → at least one credit note exists
-     *  - Overdue          → past due date and not closed
-     *  - Active           → default
+     *  - Paid             → locked and paid
+     *  - Settled          → partially or fully credited via return request
+     *  - Overdue          → past due date and not paid
+     *  - Pending          → default active state
      */
     public function computeStatus(): string
     {
-        if ($this->status === 'Closed') {
-            return 'Closed';
-        }
-
-        if ($this->creditNotes()->exists()) {
-            // If past due but also has credit → show Overdue (takes priority)
-            if ($this->payment_due_date && Carbon::today()->gt($this->payment_due_date)) {
-                return 'Overdue';
-            }
-            return 'Partially Credited';
+        if ($this->status === 'paid') {
+            return 'paid';
         }
 
         if ($this->payment_due_date && Carbon::today()->gt($this->payment_due_date)) {
             return 'Overdue';
+        }
+
+        if ($this->getTotalCreditDeduction() > 0 || $this->status === 'Partially Credited') {
+            return 'Partially Credited';
         }
 
         return 'Active';
@@ -108,11 +104,21 @@ class Invoice extends Model
     public function statusColor(): string
     {
         return match ($this->computeStatus()) {
-            'Active'            => 'blue',
-            'Partially Credited'=> 'purple',
-            'Overdue'           => 'red',
-            'Closed'            => 'green',
-            default             => 'gray',
+            'Active'             => 'blue',
+            'Partially Credited' => 'purple',
+            'Overdue'            => 'red',
+            'paid'               => 'green',
+            default              => 'gray',
         };
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === 'paid';
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->isPaid();
     }
 }

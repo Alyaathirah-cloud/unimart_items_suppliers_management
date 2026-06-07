@@ -35,6 +35,15 @@
         .breadcrumbs a:hover { color: #0f2044; }
         .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
         .avatar { width: 32px; height: 32px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 700; }
+        .topbar-profile { position: relative; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .profile-dropdown { position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 16px rgba(15,32,68,0.12); min-width: 200px; margin-top: 8px; display: none; z-index: 1000; }
+        .profile-dropdown.show { display: block; }
+        .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 0.85rem; color: #334155; text-decoration: none; border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: #f8fafc; color: #0f2044; }
+        .dropdown-item.logout { color: #c0392b; }
+        .dropdown-item.logout:hover { background: #fee2e2; }
+        .icon-btn { background: none; border: none; cursor: pointer; color: #5a6a85; font-size: 1.1rem; }
 
         .content { padding: 40px; max-width: 800px; }
         .page-title { font-size: 1.8rem; font-weight: 800; color: #0f2044; margin-bottom: 8px; }
@@ -99,13 +108,18 @@
         </div>
                 <div class="topbar-right">
             <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
+            <div class="topbar-profile" onclick="toggleProfileDropdown()">
                 <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <div>
                     <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
+                    <div style="font-size:0.72rem;color:#9daec5;">Owner</div>
+                </div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="{{ route('owner.profile.edit') }}" class="dropdown-item">👤 My Profile</a>
+                    <a href="{{ route('owner.password.change') }}" class="dropdown-item">🔐 Change Password</a>
+                    <form action="{{ route('logout') }}" method="POST" style="display:contents;">
                         @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
+                        <button type="submit" class="dropdown-item logout" style="border:none;background:none;width:100%;text-align:left;cursor:pointer;">🚪 Logout</button>
                     </form>
                 </div>
             </div>
@@ -261,6 +275,17 @@
         syncPortalAccess();
         portalToggle.addEventListener('change', syncPortalAccess);
     })();
+
+    function toggleProfileDropdown() {
+        const d = document.getElementById('profileDropdown');
+        if (d) d.classList.toggle('show');
+    }
+    document.addEventListener('click', function(e) {
+        const p = e.target.closest('.topbar-profile');
+        const d = document.getElementById('profileDropdown');
+        if (!p && d) d.classList.remove('show');
+    });
 </script>
 </body>
 </html>
+

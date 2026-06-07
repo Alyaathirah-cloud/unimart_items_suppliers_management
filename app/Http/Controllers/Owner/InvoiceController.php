@@ -136,9 +136,12 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
-        // Only manual invoices can be deleted
+        // Only manual invoices can be deleted, and not closed ones
         if ($invoice->source !== 'manual') {
             return back()->with('error', 'Cannot delete auto-generated invoices.');
+        }
+        if ($invoice->isLocked()) {
+            return back()->with('error', 'Cannot delete a closed invoice.');
         }
 
         $invoice->lines()->delete();
@@ -158,5 +161,12 @@ class InvoiceController extends Controller
             ->setPaper('a4', 'portrait');
 
         return $pdf->download($filename);
+    }
+
+    public function markPaid(Invoice $invoice)
+    {
+        $invoice->update(['status' => 'paid']);
+        return redirect()->route('owner.invoices.show', $invoice)
+            ->with('success', 'Invoice marked as paid. It is now locked.');
     }
 }

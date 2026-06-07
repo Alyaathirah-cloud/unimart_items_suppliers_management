@@ -94,10 +94,13 @@
                 <form action="{{ route('supplier.invoices.index') }}" method="GET" style="display:flex;gap:12px;">
                     <select name="status" class="filter-select" onchange="this.form.submit()">
                         <option value="">All Statuses</option>
-                        <option value="Unpaid" {{ request('status') === 'Unpaid' ? 'selected' : '' }}>Unpaid</option>
-                        <option value="Paid" {{ request('status') === 'Paid' ? 'selected' : '' }}>Paid</option>
-                        <option value="Overdue" {{ request('status') === 'Overdue' ? 'selected' : '' }}>Overdue</option>
+                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="settled" {{ request('status') === 'settled' ? 'selected' : '' }}>Settled</option>
+                        <option value="paid" {{ request('status') === 'paid' ? 'selected' : '' }}>Paid</option>
+                        <option value="Active" {{ request('status') === 'Active' ? 'selected' : '' }}>Active</option>
                         <option value="Partially Credited" {{ request('status') === 'Partially Credited' ? 'selected' : '' }}>Partially Credited</option>
+                        <option value="Overdue" {{ request('status') === 'Overdue' ? 'selected' : '' }}>Overdue</option>
+                        <option value="Closed" {{ request('status') === 'Closed' ? 'selected' : '' }}>Closed</option>
                     </select>
                 </form>
             </div>
@@ -117,34 +120,42 @@
                     <tbody>
                     @forelse($invoices as $invoice)
                         @php
-                            $s = $invoice->status;
-                            $cls = match(strtolower($s)) {
-                                'unpaid' => 'badge-pending',
-                                'paid' => 'badge-approved',
-                                'overdue' => 'badge-rejected',
-                                default => 'badge-pending',
+                            $computedStatus = $invoice->computeStatus();
+                            $statusColor = $invoice->statusColor();
+                            $cls = match($statusColor) {
+                                'blue'   => 'badge-pending',
+                                'purple' => 'badge-pending',
+                                'green'  => 'badge-approved',
+                                'red'    => 'badge-rejected',
+                                default  => 'badge-pending',
                             };
                         @endphp
                         <tr>
                             <td><div style="font-weight:700;color:#0f2044;">{{ $invoice->invoice_number }}</div></td>
                             <td>{{ optional($invoice->purchaseOrder)->po_number ?? 'N/A' }}</td>
-                            <td>{{ \Carbon\Carbon::parse($invoice->issue_date)->format('M d, Y') }}</td>
+                            <td>{{ $invoice->invoice_date->format('M d, Y') }}</td>
                             <td>
-                                @if($invoice->due_date)
-                                    <span style="{{ \Carbon\Carbon::parse($invoice->due_date)->isPast() && $s === 'Unpaid' ? 'color:#c0392b;font-weight:600' : '' }}">
-                                        {{ \Carbon\Carbon::parse($invoice->due_date)->format('M d, Y') }}
+                                @if($invoice->payment_due_date)
+                                    <span style="{{ \Carbon\Carbon::parse($invoice->payment_due_date)->isPast() && $computedStatus !== 'Closed' ? 'color:#c0392b;font-weight:600' : '' }}">
+                                        {{ $invoice->payment_due_date->format('M d, Y') }}
                                     </span>
                                 @else
                                     —
                                 @endif
                             </td>
-                            <td><div style="font-weight:600">{{ number_format($invoice->total_amount, 2) }}</div></td>
-                            <td><span class="badge {{ $cls }}">{{ ucfirst($s) }}</span></td>
+                            <td><div style="font-weight:600">{{ number_format($invoice->getNetPayableAmount(), 2) }}</div></td>
+                            <td><span class="badge {{ $cls }}">{{ $computedStatus }}</span></td>
                             <td>
-                                <a href="{{ route('supplier.invoices.export-pdf', $invoice) }}" class="btn btn-outline" target="_blank">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                    Download PDF
-                                </a>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <a href="{{ route('supplier.invoices.show', $invoice) }}" class="btn btn-outline">
+                                        View Details
+                                    </a>
+                                    <a href="{{ route('supplier.invoices.export-pdf', $invoice) }}" class="btn btn-outline" target="_blank">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        PDF
+                                    </a>
+
+                                </div>
                             </td>
                         </tr>
                     @empty

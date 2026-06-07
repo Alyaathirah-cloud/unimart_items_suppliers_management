@@ -130,7 +130,15 @@
                         <td>
                             @if($cn->returnRequest)
                                 <div style="font-weight:600;color:#0f2044;font-size:0.85rem;">#{{ $cn->returnRequest->return_number }}</div>
-                                <div style="font-size:0.72rem;color:#9daec5;">{{ $cn->returnRequest->item->name ?? '—' }} · Qty {{ $cn->returnRequest->quantity }}</div>
+                                <div style="font-size:0.72rem;color:#9daec5;">
+                                    @php
+                                        $cnLines = $cn->returnRequest?->lines ?? collect();
+                                        $cnFirstItem = optional($cnLines->first()?->item)->name ?? '—';
+                                        $cnTotalQty = $cnLines->sum('quantity');
+                                        $cnCount = $cnLines->count();
+                                    @endphp
+                                    {{ $cnFirstItem }}{{ $cnCount > 1 ? ' +'.($cnCount-1).' more' : '' }} · Qty {{ $cnTotalQty }}
+                                </div>
                             @else
                                 <span style="color:#9daec5;">—</span>
                             @endif

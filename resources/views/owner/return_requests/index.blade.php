@@ -92,6 +92,7 @@
 
         /* Status badges */
         .badge-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+        .badge-draft    { background: #f4f6fb; color: #5a6a85; }
         .badge-pending  { background: #e8f4fd; color: #2980b9; }
         .badge-approved { background: #e8f8f0; color: #1d8348; }
         .badge-rejected { background: #fdedec; color: #c0392b; }
@@ -241,6 +242,7 @@
             <div class="filter-bar">
                 <select name="status" class="filter-select">
                     <option value="">All Statuses</option>
+                    <option value="Draft"    {{ request('status') == 'Draft'    ? 'selected' : '' }}>Draft</option>
                     <option value="Pending"  {{ request('status') == 'Pending'  ? 'selected' : '' }}>Pending</option>
                     <option value="Approved" {{ request('status') == 'Approved' ? 'selected' : '' }}>Approved</option>
                     <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>Rejected</option>
@@ -326,7 +328,9 @@
                                 @endif
                             </td>
                             <td>
-                                @if($rr->status === 'Pending')
+                                @if($rr->status === 'Draft')
+                                    <span class="badge-status badge-draft"><span class="badge-dot"></span> Draft</span>
+                                @elseif($rr->status === 'Pending')
                                     <span class="badge-status badge-pending"><span class="badge-dot"></span> Pending</span>
                                 @elseif($rr->status === 'Approved')
                                     <span class="badge-status badge-approved"><span class="badge-dot"></span> Approved</span>

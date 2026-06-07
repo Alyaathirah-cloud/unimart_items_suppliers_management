@@ -1,4 +1,4 @@
-﻿@extends('layouts.owner')
+@extends('layouts.owner')
 
 @section('title', 'Inventory – 22UniMart')
 
@@ -17,13 +17,14 @@
     .page-sub { font-size: .83rem; color: #7a8fa8; margin-top: 6px; max-width: 520px; line-height: 1.6; }
     .btn-add { background: #0f2044; color: #fff; border: none; border-radius: 8px; padding: 12px 22px; font-size: .88rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: background .15s; white-space: nowrap; }
     .btn-add:hover { background: #182e5e; }
-    .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap:20px; margin-bottom:28px; }
+    .stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap:20px; margin-bottom:28px; }
     .stat-card { background:#fff;border-radius:12px;padding:22px 24px;box-shadow:0 1px 6px rgba(15,32,68,.07);display:flex;justify-content:space-between;align-items:flex-start; }
     .stat-label{font-size:.67rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9daec5;}
     .stat-value{font-size:2rem;font-weight:800;color:#0f2044;margin:8px 0 4px;line-height:1;}
     .stat-hint{font-size:.75rem;color:#27ae60;font-weight:500;}
     .stat-hint.warn{color:#d4870a;}
     .stat-hint.danger{color:#c0392b;}
+    .ic-purple{background:#f3e8ff;color:#7c3aed;}
     .stat-icon-wrap{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
     .ic-blue{background:#e8f0fb;color:#1d4ed8;}
     .ic-orange{background:#fef3e2;color:#d4870a;}
@@ -132,6 +133,14 @@
         </div>
         <div class="stat-card">
             <div>
+                <div class="stat-label">Out of Stock</div>
+                <div class="stat-value" style="color:{{ $outOfStock > 0 ? '#c0392b' : '#0f2044' }}">{{ $outOfStock }}</div>
+                <div class="stat-hint danger">Zero quantity</div>
+            </div>
+            <div class="stat-icon-wrap ic-red">🚫</div>
+        </div>
+        <div class="stat-card">
+            <div>
                 <div class="stat-label">Low Stock Alerts</div>
                 <div class="stat-value" style="color:{{ $lowStock > 0 ? '#d4870a' : '#0f2044' }}">{{ $lowStock }}</div>
                 <div class="stat-hint warn">Require immediate reorder</div>
@@ -156,11 +165,12 @@
             </div>
             <select name="status" class="filter-select" onchange="this.form.submit()">
                 <option value="">Status: All</option>
-                <option value="low_stock"  @selected(($status??'') === 'low_stock')>Low Stock</option>
+                <option value="out_of_stock" @selected(($status??'') === 'out_of_stock')>Out of Stock</option>
+                <option value="low_stock"   @selected(($status??'') === 'low_stock')>Low Stock</option>
                 <option value="near_expiry" @selected(($status??'') === 'near_expiry')>Expiring Soon</option>
-                <option value="expired"    @selected(($status??'') === 'expired')>Expired</option>
-                <option value="damaged"    @selected(($status??'') === 'damaged')>Damaged</option>
-                <option value="ok"         @selected(($status??'') === 'ok')>Normal</option>
+                <option value="expired"     @selected(($status??'') === 'expired')>Expired</option>
+                <option value="damaged"     @selected(($status??'') === 'damaged')>Damaged</option>
+                <option value="ok"          @selected(($status??'') === 'ok')>Normal</option>
             </select>
             <select name="category" class="filter-select" onchange="this.form.submit()">
                 <option value="">Category: All</option>
@@ -216,6 +226,11 @@
                                 </div>
                                 <div>
                                     <span class="item-name">{{ $item->name }}</span>
+                                    @if($item->isOutOfStock())
+                                        <span class="badge-inline badge-expired">OUT OF STOCK</span>
+                                    @elseif($isLow)
+                                        <span class="badge-inline badge-low-stock">LOW STOCK</span>
+                                    @endif
                                     @if($isDamaged)
                                         <span class="badge-inline badge-expired">Damaged ({{ max(0, (int) $item->damaged_quantity) }} units)</span>
                                     @endif
@@ -225,11 +240,8 @@
                                     @if($hasPendingReturn)
                                         <span class="badge-inline badge-low">Return Pending</span>
                                     @endif
-                                    @if($isNear)
+                                    @if($isNear && !$isExpired)
                                         <span class="badge-inline badge-near">Expiring Soon</span>
-                                    @endif
-                                    @if($isLow)
-                                        <span class="badge-inline badge-low-stock">LOW STOCK</span>
                                     @endif
                                 </div>
                             </div>
@@ -249,7 +261,7 @@
                                     @csrf @method('DELETE')
                                     <button type="button" class="btn btn-del" onclick="confirmDelete(this.closest('form'))">🗑 Delete</button>
                                 </form>
-                                @if($isLow)
+                                @if($item->isOutOfStock() || $isLow)
                                     <a href="{{ route('owner.purchase-orders.create', ['item_id' => $item->id]) }}" class="btn btn-po">🛒 Create PO</a>
                                 @endif
                                 @if(!$isDamaged && !$isExpired)

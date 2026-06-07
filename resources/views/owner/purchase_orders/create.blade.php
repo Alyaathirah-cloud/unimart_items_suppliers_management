@@ -180,7 +180,22 @@
                     </select>
                 </div>
 
-                <div class="items-section">
+                {{-- ── Suggested Items Panel ── --}}
+                <div id="suggestionPanel" style="display:none;border:1px solid #dbe7f5;border-radius:10px;margin-bottom:24px;overflow:hidden;">
+                    <div style="background:#eef6ff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <span style="font-size:.88rem;font-weight:700;color:#0f2044;">⚠ Suggested Reorder Items</span>
+                            <span style="font-size:.75rem;color:#5a6a85;margin-left:8px;">Items linked to this supplier that are low or out of stock</span>
+                        </div>
+                        <button type="button" onclick="addSuggestedItems()"
+                            style="background:#0f2044;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">
+                            + Add Selected to Order
+                        </button>
+                    </div>
+                    <div id="suggestionList">
+                        <div style="color:#9daec5;font-size:.85rem;padding:12px">Loading…</div>
+                    </div>
+                </div>
                     <div class="items-header">
                         <span>Order Items</span>
                     </div>
@@ -216,6 +231,7 @@
 
 <script>
     const allItems = @json($items);
+    const LOW_STOCK_URL_BASE = '{{ url("owner/purchase-orders/low-stock-items") }}';
     let rowCount = 0;
     const preselectedItemId = {{ $preselectedItem ? $preselectedItem->id : 'null' }};
     const preselectedQty = {{ $preselectedItem ? max(1, $preselectedItem->reorder_point * 2) : 1 }};
@@ -240,18 +256,13 @@
 
     function addItemRow(itemId = null, qty = 1) {
         const supplierId = document.getElementById('supplier_id').value;
-        if (!supplierId) {
-            alert('Please select a supplier first.');
-            return;
-        }
+        if (!supplierId) { alert('Please select a supplier first.'); return; }
 
         const container = document.getElementById('itemsContainer');
         const rowId = `row_${rowCount}`;
-        
         const row = document.createElement('div');
         row.className = 'item-row';
         row.id = rowId;
-        
         row.innerHTML = `
             <div class="item-col-name">
                 <select name="items[${rowCount}][item_id]" class="form-select item-select" required onchange="updateRow('${rowId}')">
@@ -264,14 +275,11 @@
             <div class="item-col-price">
                 <input type="text" class="form-control price-input" value="RM 0.00" readonly>
             </div>
-            <div class="item-col-sub subtotal-display">
-                RM 0.00
-            </div>
+            <div class="item-col-sub subtotal-display">RM 0.00</div>
             <div class="item-col-action">
                 <button type="button" class="btn-remove" onclick="removeRow('${rowId}')">&times;</button>
             </div>
         `;
-        
         container.appendChild(row);
         updateRow(rowId);
         rowCount++;
@@ -284,58 +292,95 @@
 
     function updateRow(rowId) {
         const row = document.getElementById(rowId);
-        if(!row) return;
-        
+        if (!row) return;
         const select = row.querySelector('.item-select');
         const qtyInput = row.querySelector('.qty-input');
         const qty = parseInt(qtyInput.value) || 0;
         const priceInput = row.querySelector('.price-input');
         const subDisplay = row.querySelector('.subtotal-display');
-        
         let price = 0;
-        let ropPlaceholder = 'Qty';
         if (select.selectedIndex > 0) {
             price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
-            ropPlaceholder = select.options[select.selectedIndex].dataset.rop || 'Qty';
-            qtyInput.placeholder = ropPlaceholder;
-        } else {
-            qtyInput.placeholder = 'Qty';
         }
-        
         priceInput.value = 'RM ' + price.toFixed(2);
         const subtotal = price * qty;
         subDisplay.textContent = 'RM ' + subtotal.toFixed(2);
         subDisplay.dataset.value = subtotal;
-        
         calculateTotal();
     }
 
     function calculateTotal() {
-        let totalQty = 0;
-        let totalAmount = 0;
-        
+        let totalQty = 0, totalAmount = 0;
         document.querySelectorAll('.item-row').forEach(row => {
             totalQty += parseInt(row.querySelector('.qty-input').value) || 0;
             totalAmount += parseFloat(row.querySelector('.subtotal-display').dataset.value || 0);
         });
-        
         document.getElementById('summary_quantity').textContent = totalQty;
         document.getElementById('summary_final').textContent = 'RM ' + totalAmount.toFixed(2);
     }
 
+    // ── Suggestion panel ──────────────────────────────────────────────────────
+
+    async function loadSuggestions(supplierId) {
+        const panel = document.getElementById('suggestionPanel');
+        const list  = document.getElementById('suggestionList');
+        if (!supplierId) { panel.style.display = 'none'; return; }
+        list.innerHTML = '<div style="color:#9daec5;font-size:.85rem;padding:12px">Loading…</div>';
+        panel.style.display = 'block';
+        try {
+            const res  = await fetch(`${LOW_STOCK_URL_BASE}/${supplierId}`);
+            const data = await res.json();
+            if (!data.items || data.items.length === 0) {
+                list.innerHTML = '<div style="color:#27ae60;font-size:.85rem;padding:12px">✅ No low stock items for this supplier.</div>';
+                return;
+            }
+            list.innerHTML = data.items.map(item => `
+                <label class="suggestion-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f0f4f8;cursor:pointer;">
+                    <input type="checkbox" class="suggest-cb" data-id="${item.id}" data-qty="${item.suggested_qty}" style="accent-color:#0f2044;width:15px;height:15px;">
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:.85rem;color:#0f2044">${item.name}</div>
+                        <div style="font-size:.72rem;color:#9daec5">
+                            ${item.status === 'out_of_stock'
+                                ? '<span style="color:#c0392b;font-weight:700">OUT OF STOCK</span>'
+                                : `<span style="color:#d4870a;font-weight:600">Low Stock</span> — ${item.quantity} left (ROP: ${item.reorder_point})`}
+                        </div>
+                    </div>
+                    <div style="font-size:.82rem;color:#0f2044">
+                        Suggested qty: <strong>${item.suggested_qty}</strong>
+                    </div>
+                    <div style="font-size:.82rem;color:#27ae60;font-weight:600">
+                        RM ${(item.unit_price * item.suggested_qty).toFixed(2)}
+                    </div>
+                </label>
+            `).join('');
+        } catch(e) {
+            list.innerHTML = '<div style="color:#c0392b;font-size:.85rem;padding:12px">Failed to load suggestions.</div>';
+        }
+    }
+
+    function addSuggestedItems() {
+        const cbs = document.querySelectorAll('.suggest-cb:checked');
+        if (cbs.length === 0) { alert('Please tick at least one suggested item.'); return; }
+        cbs.forEach(cb => {
+            const itemId = cb.dataset.id;
+            const qty    = parseInt(cb.dataset.qty);
+            addItemRow(itemId, qty);
+        });
+        // Uncheck all after adding
+        document.querySelectorAll('.suggest-cb').forEach(cb => cb.checked = false);
+    }
+
     document.getElementById('supplier_id').addEventListener('change', function() {
-        // Clear all rows when supplier changes
         document.getElementById('itemsContainer').innerHTML = '';
         rowCount = 0;
         calculateTotal();
-        
-        if (this.value) {
-            addItemRow();
-        }
+        loadSuggestions(this.value);
+        if (this.value) addItemRow();
     });
 
     // Init
     if (document.getElementById('supplier_id').value) {
+        loadSuggestions(document.getElementById('supplier_id').value);
         if (preselectedItemId) {
             addItemRow(preselectedItemId, preselectedQty);
         } else {

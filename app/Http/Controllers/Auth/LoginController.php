@@ -94,6 +94,9 @@ class LoginController extends Controller
         } elseif ($user->isOwner()) {
             return redirect('/owner/items');
         } elseif ($user->isSupplier()) {
+            Auth::guard('web')->logout();
+            Auth::guard('supplier')->login($user);
+            $request->session()->regenerate();
             return redirect('/supplier/dashboard');
         }
         return redirect($this->redirectTo);

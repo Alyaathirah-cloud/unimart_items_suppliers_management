@@ -9,7 +9,8 @@ class ForcePasswordChange
 {
     public function handle(Request $request, Closure $next)
     {
-        if (auth()->check() && auth()->user()->must_change_password) {
+        $user = auth()->user() ?? auth('supplier')->user();
+        if ($user && $user->must_change_password) {
             if (! $request->routeIs('password.force-change')
                 && ! $request->routeIs('password.force-change.update')
                 && ! $request->routeIs('password.request')

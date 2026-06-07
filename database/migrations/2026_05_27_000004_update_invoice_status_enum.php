@@ -7,7 +7,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Update existing statuses to new terminology
         DB::statement("UPDATE invoices SET status = 'Active' WHERE status IN ('unpaid', 'Unpaid', 'active')");
         DB::statement("UPDATE invoices SET status = 'Closed' WHERE status IN ('paid', 'Paid', 'closed')");
     }

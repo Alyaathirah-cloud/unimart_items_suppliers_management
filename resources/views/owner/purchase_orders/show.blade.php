@@ -217,30 +217,61 @@
                 </div>
                 @endif
 
-                {{-- ── Mark as Received Panel ── --}}
+                {{-- ── Delivery Checklist Form ── --}}
                 @if($purchaseOrder->status === 'Approved' && $purchaseOrder->delivery && $purchaseOrder->delivery->delivery_date)
                 <div class="card" style="margin-bottom:20px;border:2px solid #1d8348;">
                     <div class="card-header" style="background:#e8f8f0;border-bottom:1px solid #a9dfbf;">
-                        <span class="card-title" style="color:#1d8348;">✅ Confirm Goods Receipt</span>
+                        <span class="card-title" style="color:#1d8348;">📦 Delivery Checklist</span>
                         <span style="font-size:.78rem;color:#5a6a85;">Delivery scheduled: {{ $purchaseOrder->delivery->delivery_date->format('d M Y') }}</span>
                     </div>
                     <div style="padding:20px 24px;">
                         <form id="receiveForm" method="POST" action="{{ route('owner.purchase-orders.markAsReceived', $purchaseOrder) }}">
                             @csrf
                             @method('PATCH')
-                            <p style="font-size:.9rem;color:#5a6a85;margin-bottom:12px;">Mark this purchase order as received. Stock will increase automatically and an invoice will be generated from the physical document supplied by the vendor.</p>
+                            <p style="font-size:.9rem;color:#5a6a85;margin-bottom:16px;">Verify the items received from the supplier. Record any damaged goods and the expiry dates found on the packaging.</p>
 
-                            {{-- Invoice number/date inputs removed — simplified receive action per request --}}
+                            <table style="width:100%; border-collapse:collapse; margin-bottom: 20px;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <th style="padding:10px 0; text-align:left; font-size:.8rem; color:#5a6a85;">Item</th>
+                                        <th style="padding:10px; text-align:center; font-size:.8rem; color:#5a6a85;">Ordered</th>
+                                        <th style="padding:10px; text-align:center; font-size:.8rem; color:#5a6a85;">Received</th>
+                                        <th style="padding:10px; text-align:center; font-size:.8rem; color:#5a6a85;">Damaged</th>
+                                        <th style="padding:10px; text-align:center; font-size:.8rem; color:#5a6a85;">Good</th>
+                                        <th style="padding:10px; text-align:left; font-size:.8rem; color:#5a6a85;">Expiry Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($purchaseOrder->orderItems as $poItem)
+                                    <tr style="border-bottom: 1px solid #f0f4f8;">
+                                        <td style="padding:12px 0; font-size:.88rem; font-weight:600;">{{ optional($poItem->item)->name ?? 'N/A' }}</td>
+                                        <td style="padding:12px; text-align:center; font-size:.88rem;">{{ $poItem->quantity }}</td>
+                                        <td style="padding:12px; text-align:center;">
+                                            <input type="number" name="items[{{ $poItem->id }}][received_quantity]" min="0" value="{{ $poItem->quantity }}" style="width:70px; padding:6px; border:1px solid #d1dce8; border-radius:6px; text-align:center;" oninput="updateGoodQty({{ $poItem->id }})">
+                                        </td>
+                                        <td style="padding:12px; text-align:center;">
+                                            <input type="number" name="items[{{ $poItem->id }}][damaged_quantity]" min="0" value="0" style="width:70px; padding:6px; border:1px solid #d1dce8; border-radius:6px; text-align:center;" oninput="updateGoodQty({{ $poItem->id }})">
+                                        </td>
+                                        <td style="padding:12px; text-align:center; font-weight:700; color:#1d8348;" id="goodQty_{{ $poItem->id }}">
+                                            {{ $poItem->quantity }}
+                                        </td>
+                                        <td style="padding:12px; text-align:left;">
+                                            <input type="date" name="items[{{ $poItem->id }}][expiry_date]" style="padding:6px; border:1px solid #d1dce8; border-radius:6px;">
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
 
                             <button type="submit" id="confirmReceiveBtn"
-                                    style="background:#1d8348;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;"
+                                    style="background:#1d8348;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s; width:100%;"
                                     onmouseover="this.style.background='#155d36'" onmouseout="this.style.background='#1d8348'">
-                                ✅ Mark as Received
+                                ✅ Confirm Receipt & Generate Invoice
                             </button>
                         </form>
                     </div>
                 </div>
-                @elseif(strtolower($purchaseOrder->status) === 'received')
+                @elseif(in_array(strtolower($purchaseOrder->status), ['received', 'delivered']))
                 <div class="card" style="margin-bottom:20px;border:2px solid #a9dfbf;background:#e8f8f0;padding:16px 20px;">
                     <span style="font-size:.9rem;font-weight:700;color:#1d8348;">🟢 This purchase order has been marked as Received.</span>
                 </div>
@@ -304,7 +335,7 @@
                         <span class="card-title">📄 Invoice</span>
                     </div>
                     <div class="invoice-card-inner" id="invoiceCardInner">
-                                @if(strtolower($purchaseOrder->status) === 'received' && $purchaseOrder->invoice)
+                                @if(in_array(strtolower($purchaseOrder->status), ['received', 'delivered']) && $purchaseOrder->invoice)
                             <div style="display:flex;flex-direction:column;gap:12px;">
                                 <div class="invoice-doc-icon">🧾</div>
                                 <div class="invoice-num">{{ $purchaseOrder->invoice->invoice_number }}</div>
@@ -470,7 +501,21 @@ document.getElementById('invoiceModal')?.addEventListener('click', function(e) {
 });
 </script>
 
-@if(($purchaseOrder->status === 'Approved' || strtolower($purchaseOrder->status) === 'received') && !$purchaseOrder->invoice)
+<script>
+function updateGoodQty(id) {
+    const receivedInput = document.querySelector(`input[name="items[${id}][received_quantity]"]`);
+    const damagedInput = document.querySelector(`input[name="items[${id}][damaged_quantity]"]`);
+    if (!receivedInput || !damagedInput) return;
+    
+    const received = parseInt(receivedInput.value) || 0;
+    const damaged = parseInt(damagedInput.value) || 0;
+    const goodCell = document.getElementById(`goodQty_${id}`);
+    const good = Math.max(0, received - damaged);
+    goodCell.textContent = good;
+}
+</script>
+
+@if(($purchaseOrder->status === 'Approved' || in_array(strtolower($purchaseOrder->status), ['received', 'delivered'])) && !$purchaseOrder->invoice)
 <script>
     const pollInterval = setInterval(() => {
         fetch('{{ route('owner.purchase-orders.invoice-status', $purchaseOrder) }}')

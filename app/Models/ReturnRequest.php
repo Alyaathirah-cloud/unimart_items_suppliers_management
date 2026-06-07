@@ -12,9 +12,6 @@ class ReturnRequest extends Model
 
     protected $fillable = [
         'return_number',
-        'item_id',
-        'quantity',
-        'reason',
         'invoice_id',
         'invoice_number',
         'notes',
@@ -31,9 +28,21 @@ class ReturnRequest extends Model
 
     // ── Relationships ────────────────────────────────────────────────────────
 
-    public function item()
+    /**
+     * All return request lines (multi-item support).
+     */
+    public function lines()
     {
-        return $this->belongsTo(Item::class);
+        return $this->hasMany(ReturnRequestLine::class);
+    }
+
+    /**
+     * Only lines that were (at least partially) approved by the supplier.
+     */
+    public function approvedLines()
+    {
+        return $this->hasMany(ReturnRequestLine::class)
+                    ->where('approved_qty', '>', 0);
     }
 
     public function supplier()
@@ -44,11 +53,6 @@ class ReturnRequest extends Model
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
-    }
-
-    public function lines()
-    {
-        return $this->hasMany(ReturnRequestLine::class);
     }
 
     public function createdBy()
@@ -94,20 +98,18 @@ class ReturnRequest extends Model
     }
 
     /**
-     * Legacy helper — kept for compatibility.
+     * Legacy helper — kept for compatibility with credit note views.
      */
     public function getTotal(): float
     {
         return $this->getRequestedTotal();
     }
 
-    /** @deprecated — use lines relationship for itemised data */
+    /**
+     * Credit amount derived entirely from line items.
+     */
     public function getCreditAmountAttribute()
     {
-        $total = $this->lines()->sum('subtotal');
-        if ($total > 0) {
-            return $total;
-        }
-        return ($this->item->unit_price ?? 0) * ($this->quantity ?? 0);
+        return $this->lines()->sum('subtotal');
     }
 }
