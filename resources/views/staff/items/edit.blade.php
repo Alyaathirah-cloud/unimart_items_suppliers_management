@@ -88,7 +88,7 @@
         <div class="breadcrumbs"><a href="{{ route('staff.inventory.index') }}">Inventory</a> › <span style="color:#0f2044;">Edit Item</span></div>
                 <div class="topbar-right">
             <a href="{{ route('staff.notif.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            @include('owner.components.topbar-profile')
+            @include('staff.components.topbar-profile')
         </div>
     </div>
 

@@ -2,7 +2,7 @@
     <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
     <div>
         <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-        <div style="font-size:0.7rem;color:#9daec5;font-weight:normal;">Owner</div>
+        <div style="font-size:0.7rem;color:#9daec5;font-weight:normal;">Staff</div>
     </div>
     <div class="profile-dropdown" id="profileDropdown">
         <a href="{{ route('staff.profile.edit') ?? '#' }}" class="dropdown-item">👤 My Profile</a>

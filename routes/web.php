@@ -294,4 +294,6 @@ Route::prefix('staff')->name('staff.')->middleware(['auth', 'staff'])->group(fun
 
     // Notifications
     Route::get('notifications', [App\Http\Controllers\Staff\StaffNotificationController::class, 'index'])->name('notif.index');
+    Route::post('notifications/mark-all', [App\Http\Controllers\Staff\StaffNotificationController::class, 'markAllAsRead'])->name('notifications.markAll');
+    Route::patch('notifications/{notification}', [App\Http\Controllers\Staff\StaffNotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 });

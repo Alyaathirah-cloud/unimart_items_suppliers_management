@@ -107,7 +107,7 @@
     </form>
     <div class="topbar-right">
         <a href="{{ route('staff.notif.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-        @include('owner.components.topbar-profile')
+        @include('staff.components.topbar-profile')
     </div>
 @endsection
 
