@@ -25,15 +25,20 @@ class ProfileController extends Controller
         $owner = auth()->user();
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($owner->id)],
-            'phone' => 'nullable|string|max:30',
+            'name'             => 'required|string|max:255',
+            'email'            => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($owner->id)],
+            'phone'            => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
+            'whatsapp_number'  => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
+        ], [
+            'phone.regex' => 'The phone format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
+            'whatsapp_number.regex' => 'The WhatsApp number format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
         ]);
 
         $owner->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'name'            => $request->name,
+            'email'           => $request->email,
+            'phone'           => $request->phone,
+            'whatsapp_number' => $request->whatsapp_number,
         ]);
 
         return back()->with('success', 'Profile updated successfully.');

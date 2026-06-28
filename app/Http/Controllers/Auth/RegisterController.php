@@ -41,24 +41,6 @@ class RegisterController extends Controller
         $this->middleware('guest');
     }
 
-    /**
-     * The user has been registered. Redirect based on role.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  mixed  $user
-     * @return \Illuminate\Http\Response
-     */
-    protected function registered(Request $request, $user)
-    {
-        if ($user->isAdmin()) {
-            return redirect('/admin/users');
-        } elseif ($user->isOwner()) {
-            return redirect('/owner/items');
-        } elseif ($user->isSupplier()) {
-            return redirect('/supplier/dashboard');
-        }
-        return redirect($this->redirectTo);
-    }
 
     /**
      * Get a validator for an incoming registration request.
@@ -72,6 +54,7 @@ class RegisterController extends Controller
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'role'     => ['required', 'string', 'in:owner,staff,supplier'],
         ]);
     }
 
@@ -87,7 +70,33 @@ class RegisterController extends Controller
             'name'     => $data['name'],
             'email'    => $data['email'],
             'password' => Hash::make($data['password']),
-            'role'     => 'owner',
+            'role'     => $data['role'],
+            'status'   => $data['role'] === 'staff' ? 'pending' : 'active',
         ]);
+    }
+
+    protected function registered(Request $request, $user)
+    {
+        if ($user->status === 'pending') {
+            \Illuminate\Support\Facades\Auth::logout();
+            
+            $owner = User::where('role', 'owner')->first();
+            if ($owner) {
+                \App\Models\Notification::sendToOwners('staff_registration', "New Staff Registration Request: {$user->name}");
+            }
+
+            return redirect('/login')->with('status', 'Your registration request has been submitted and is awaiting owner approval.');
+        }
+
+        if ($user->isAdmin()) {
+            return redirect('/admin/users');
+        } elseif ($user->isOwner()) {
+            return redirect('/owner/dashboard');
+        } elseif ($user->isStaff()) {
+            return redirect('/owner/items');
+        } elseif ($user->isSupplier()) {
+            return redirect('/supplier/dashboard');
+        }
+        return redirect($this->redirectTo);
     }
 }

@@ -12,24 +12,30 @@ class SupplierInviteMail extends Mailable
 
     public $data;
 
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
-    public function __construct($data)
+    // Expose individual fields so both email templates can access them
+    public string $contactPerson;
+    public string $companyName;
+    public string $loginUrl;
+    public string $contactEmail;
+    public string $password;
+    public string $ownerContact;
+    public string $telegramToken;
+
+    public function __construct(array $data)
     {
-        $this->data = $data;
+        $this->data          = $data;
+        $this->contactPerson = $data['contact_person'] ?? 'Supplier';
+        $this->companyName   = $data['company_name']   ?? '22UniMart';
+        $this->loginUrl      = $data['portal_url']     ?? url('/supplier/login');
+        $this->contactEmail  = $data['email']          ?? '';
+        $this->password      = $data['password']       ?? '';
+        $this->ownerContact  = $data['owner_phone']    ?? 'N/A';
+        $this->telegramToken = $data['telegram_token'] ?? '';
     }
 
-    /**
-     * Build the message.
-     *
-     * @return $this
-     */
     public function build()
     {
-        return $this->subject('Your 22UniMart Supplier Portal Access')
-                    ->view('emails.supplier_invite');
+        return $this->subject("You're Invited — {$this->companyName} Supplier Portal Access")
+                    ->view('emails.supplier_invitation');
     }
 }

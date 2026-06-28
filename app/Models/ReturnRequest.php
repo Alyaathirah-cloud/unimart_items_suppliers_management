@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Invoice;
+use App\Models\User;
 
 class ReturnRequest extends Model
 {
@@ -20,6 +21,7 @@ class ReturnRequest extends Model
         'status',
         'request_date',
         'created_by',
+        'updated_by',
     ];
 
     protected $casts = [

@@ -22,6 +22,8 @@
         .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #10b981; font-weight: 700; }
         .nav-icon { width: 18px; text-align: center; flex-shrink: 0; }
         .sidebar-bottom { padding: 16px 20px 0; border-top: 1px solid rgba(255,255,255,0.07); margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+        .btn-report { background: #1e3a6e; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s; }
+        .btn-report:hover { background: #2a4f8f; }
         .btn-logout { background: rgba(220,53,69,.15); color: #f87171; border: 1px solid rgba(220,53,69,.3); border-radius: 7px; padding: 10px 14px; font-size: .82rem; font-weight: 600; cursor: pointer; width: 100%; font-family: 'Inter', sans-serif; transition: all .15s; }
         .btn-logout:hover { background: rgba(220,53,69,.25); }
 
@@ -76,19 +78,13 @@
 </head>
 <body>
 
-@include('supplier.partials.sidebar', ['active' => 'notifications'])
+@include('supplier.partials.sidebar', ['active' => 'notifications', 'hideBrandSub' => true])
 
 <div class="main">
     <div class="topbar">
         <div class="topbar-label">Notifications</div>
-        <div class="topbar-right">
-            <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            <div>
-                <div class="topbar-name">{{ auth()->user()->name }}</div>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf
-                    <button type="submit" class="topbar-logout">Logout</button>
-                </form>
-            </div>
+        <div class="topbar-right" style="margin-left: auto; display: flex; align-items: center; gap: 20px;">
+            @include('supplier.components.topbar-profile')
         </div>
     </div>
 

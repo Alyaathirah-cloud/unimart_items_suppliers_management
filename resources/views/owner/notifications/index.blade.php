@@ -1,37 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Notifications – 22UniMart</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+@extends('layouts.owner')
+
+@section('title', 'Notifications – 22UniMart')
+
+@push('styles')
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #eef2f7; display: flex; min-height: 100vh; }
-        .sidebar { width: 210px; flex-shrink: 0; background: #0f2044; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px 0; position: fixed; top: 0; left: 0; height: 100vh; }
-        .sidebar-brand { padding: 20px 20px 4px; display: flex; align-items: center; gap: 12px; }
-        .brand-square { width: 32px; height: 32px; background: #fff; color: #0f2044; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; flex-shrink: 0; }
-        .brand-text .brand-name { font-size: 0.9rem; font-weight: 800; }
-        .brand-text .brand-sub  { font-size: 0.68rem; color: #8ca0c0; }
-        .sidebar-nav { flex: 1; margin-top: 20px; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; font-size: 0.88rem; font-weight: 500; color: #8ca0c0; cursor: pointer; text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
-        .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #4a90d9; }
-        .nav-icon { width: 18px; text-align: center; flex-shrink: 0; }
-        .sidebar-bottom { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-report { background: #1e3a6e; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s; }
-        .btn-report:hover { background: #2a4f8f; }
-        .sidebar-link { display: flex; align-items: center; gap: 10px; color: #8ca0c0; font-size: 0.82rem; text-decoration: none; padding: 6px 0; }
-
-        .main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; }
-        .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
-        .search-box { display: flex; align-items: center; gap: 8px; background: #f4f6fb; border-radius: 8px; padding: 8px 14px; flex: 1; max-width: 360px; }
-        .search-box input { border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; font-size: 0.88rem; color: #3a4d6a; width: 100%; }
-        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.85rem; font-weight: 700; }
-
-        .content { padding: 32px; max-width: 1000px; margin: 0 auto; width: 100%; }
         .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }
         .page-title { font-size: 1.6rem; font-weight: 800; color: #0f2044; }
         .page-sub   { font-size: 0.85rem; color: #7a8fa8; margin-top: 4px; }
@@ -62,64 +34,32 @@
         .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
         .empty-text { font-size: 0.95rem; font-weight: 600; color: #7a8fa8; }
 
-        .pagination-wrap { padding: 16px 20px; background: #fafbfd; border-top: 1px solid #f0f4f8; display: flex; justify-content: space-between; align-items: center; }
+        .pagination-wrap { display: flex; align-items: center; gap: 8px; }
         .footer-info { font-size: 0.8rem; color: #7a8fa8; }
-        .page-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #3a4d6a; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; text-decoration: none; }
+        .page-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #3a4d6a; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; text-decoration: none; font-family: 'Inter', sans-serif; transition: all 0.12s; }
         .page-btn:hover { background: #0f2044; color: #fff; border-color: #0f2044; }
         .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+        .page-btn.active { background: #0f2044; color: #fff; border-color: #0f2044; }
+        
+        .topbar-search { display: flex; align-items: center; gap: 8px; background: #f4f6fb; border-radius: 8px; padding: 8px 14px; flex: 1; max-width: 360px; margin-right: auto; }
+        .topbar-search input { border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; font-size: 0.88rem; color: #3a4d6a; width: 100%; }
+        .topbar-search input::placeholder { color: #9daec5; }
+        .notif-pagination-container { padding: 16px 20px; background: #fafbfd; border-top: 1px solid #f0f4f8; display: flex; justify-content: space-between; align-items: center; }
     </style>
-</head>
-<body>
+@endpush
 
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-square">22</div>
-        <div class="brand-text">
-            <div class="brand-name">22UNIMART</div>
-            <div class="brand-sub">Inventory Control</div>
-        </div>
+@section('topbar')
+    <div class="topbar-search">
+        <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search inventory, POs...">
     </div>
-        <nav class="sidebar-nav">
-        <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}"><span class="nav-icon">⊞</span> Dashboard</a>
-        <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}"><span class="nav-icon">📦</span> Inventory</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
-        <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}"><span class="nav-icon">🛒</span> Purchase Orders</a>
-        <a href="{{ route('owner.return-requests.index') }}" class="nav-item {{ request()->routeIs('owner.return-requests.*') ? 'active' : '' }}"><span class="nav-icon">↩</span> Return Requests</a>
-        <a href="{{ route('owner.invoices.index') }}" class="nav-item {{ request()->routeIs('owner.invoices.*') ? 'active' : '' }}"><span class="nav-icon">📄</span> Invoices</a>
-        <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}"><span class="nav-icon">📋</span> Credit Notes</a>
-        <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}"><span class="nav-icon">🔔</span> Notifications</a>
-    </nav>
-        <div class="sidebar-bottom">
-        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: Owner</div>
-        <form action="{{ route('logout') }}" method="POST" style="margin: 0; width: 100%;">
-            @csrf
-            <button type="submit" class="btn-report" style="background: #c0392b;">Logout</button>
-        </form>
+    <div class="topbar-right">
+        <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
+        @include('owner.components.topbar-profile')
     </div>
-</aside>
+@endsection
 
-<div class="main">
-    <div class="topbar">
-        <div class="search-box">
-            <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" placeholder="Search inventory, POs...">
-        </div>
-                <div class="topbar-right">
-            <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="content">
+@section('content')
         <div class="page-header">
             <div>
                 <div class="page-title">Notifications</div>
@@ -188,17 +128,27 @@
             @endforelse
 
             @if($notifications->hasPages())
-            <div class="pagination-wrap">
+            <div class="notif-pagination-container">
                 <div class="footer-info">Showing {{ $notifications->firstItem() ?? 0 }}–{{ $notifications->lastItem() ?? 0 }} of {{ $notifications->total() }}</div>
-                <div style="display:flex;align-items:center;gap:8px;">
+                <div class="pagination-wrap">
                     @if($notifications->onFirstPage())
                         <span class="page-btn disabled">‹</span>
                     @else
-                        <a class="page-btn" href="{{ $notifications->previousPageUrl() }}">‹</a>
+                        <a href="{{ $notifications->previousPageUrl() }}" class="page-btn">‹</a>
                     @endif
-                    <span style="font-size:0.8rem;color:#7a8fa8;">Page {{ $notifications->currentPage() }} / {{ $notifications->lastPage() }}</span>
+
+                    @foreach(range(1, max(1, $notifications->lastPage())) as $i)
+                        @if($i >= $notifications->currentPage() - 2 && $i <= $notifications->currentPage() + 2)
+                            @if($i == $notifications->currentPage())
+                                <span class="page-btn active">{{ $i }}</span>
+                            @else
+                                <a href="{{ $notifications->url($i) }}" class="page-btn">{{ $i }}</a>
+                            @endif
+                        @endif
+                    @endforeach
+
                     @if($notifications->hasMorePages())
-                        <a class="page-btn" href="{{ $notifications->nextPageUrl() }}">›</a>
+                        <a href="{{ $notifications->nextPageUrl() }}" class="page-btn">›</a>
                     @else
                         <span class="page-btn disabled">›</span>
                     @endif
@@ -206,7 +156,4 @@
             </div>
             @endif
         </div>
-    </div>
-</div>
-</body>
-</html>
+@endsection

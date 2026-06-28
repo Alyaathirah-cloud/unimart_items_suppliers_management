@@ -22,7 +22,9 @@ class LoginController extends Controller
     |
     */
 
-    use AuthenticatesUsers;
+    use AuthenticatesUsers {
+        login as traitLogin;
+    }
 
     /**
      * Where to redirect users after login (fallback).
@@ -87,19 +89,59 @@ class LoginController extends Controller
         ]);
     }
 
+    public function login(Request $request)
+    {
+        $request->validate([
+            $this->username() => 'required|string',
+            'password' => 'required|string',
+            'role' => 'required|string|in:owner,staff,supplier'
+        ]);
+
+        $loginValue = $request->input($this->username());
+        $user = User::where('email', $loginValue)->orWhere('name', $loginValue)->first();
+
+        if ($user && $user->role !== $request->role) {
+            return back()->withErrors([$this->username() => 'The selected role does not match your account.']);
+        }
+
+        if ($user && !in_array($user->role, ['admin', 'owner', 'staff', 'supplier'])) {
+            return back()->withErrors([$this->username() => 'Your account role is not recognised.']);
+        }
+
+        if ($user && $user->status === 'inactive') {
+            return back()->withErrors([$this->username() => 'Your account has been deactivated.']);
+        }
+
+        if ($user && $user->status === 'pending') {
+            return back()->withErrors([$this->username() => 'Your account is pending approval from the owner.']);
+        }
+
+        if ($user && $user->status === 'rejected') {
+            return back()->withErrors([$this->username() => 'Your registration request has been rejected. Please contact the owner.']);
+        }
+
+        return $this->traitLogin($request);
+    }
+
     protected function authenticated(Request $request, $user)
     {
         if ($user->isAdmin()) {
             return redirect('/admin/users');
-        } elseif ($user->isOwner()) {
-            return redirect('/owner/items');
-        } elseif ($user->isSupplier()) {
+        }
+        if ($user->isOwner()) {
+            return redirect('/owner/dashboard');
+        }
+        if ($user->isStaff()) {
+            return redirect('/staff/dashboard');
+        }
+        if ($user->isSupplier()) {
+            // Preserve existing supplier guard login logic
             Auth::guard('web')->logout();
             Auth::guard('supplier')->login($user);
             $request->session()->regenerate();
             return redirect('/supplier/dashboard');
         }
-        return redirect($this->redirectTo);
+        return redirect('/');
     }
 
     public function logout(Request $request)

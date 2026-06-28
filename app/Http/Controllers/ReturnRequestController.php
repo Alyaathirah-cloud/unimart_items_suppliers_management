@@ -28,7 +28,7 @@ class ReturnRequestController extends Controller
             return redirect()->route('supplier.dashboard');
         }
 
-        $query = ReturnRequest::with(['supplier', 'creditNote', 'lines.item']);
+        $query = ReturnRequest::with(['supplier', 'creditNote', 'lines.item', 'createdBy']);
 
         if ($user->isOwner()) {
             // Owner can see all
@@ -63,78 +63,175 @@ class ReturnRequestController extends Controller
 
     public function create(Request $request)
     {
-        $preselectedItem  = null;
-        $preselectedInvoice = null;
-        $preselectedQuantity = (int) $request->input('quantity', 0);
+        // Auto-detect expired items
+        $expiredItems = \App\Models\Item::where('expiry_date', '<', now())
+            ->where('quantity', '>', 0)
+            ->with('supplier')
+            ->get();
 
-        // If coming from expired inventory, load the item context
-        if ($request->filled('item_id')) {
-            $preselectedItem = \App\Models\Item::with('supplier')->find($request->item_id);
-            if ($preselectedItem && $preselectedItem->isDamaged()) {
-                $requestedQuantity = $preselectedQuantity > 0 ? $preselectedQuantity : (int) $preselectedItem->damaged_quantity;
-                $preselectedQuantity = min($requestedQuantity, (int) $preselectedItem->damaged_quantity);
-            }
-        }
+        // Auto-detect damaged items
+        $damagedItems = \App\Models\Item::where('is_damaged', true)
+            ->where('damaged_quantity', '>', 0)
+            ->with('supplier')
+            ->get();
 
-        // Build invoice query - filter by item's supplier when pre-selected
-        $invoiceQuery = Invoice::with(['supplier', 'lines.item', 'purchaseOrder.item'])
-            ->orderBy('invoice_date', 'desc');
+        // Merge and de-duplicate by item ID
+        $flaggedItems = $expiredItems->merge($damagedItems)->unique('id');
 
-        if ($request->filled('invoice_id')) {
-            $invoiceQuery->where('id', $request->invoice_id);
-        }
+        $pendingItemIds = \App\Models\ReturnRequestLine::whereHas('returnRequest', function($q) {
+            $q->where('status', 'Pending');
+        })->pluck('item_id')->toArray();
 
-        if ($preselectedItem && $preselectedItem->supplier_id) {
-            $invoiceQuery->where('supplier_id', $preselectedItem->supplier_id);
-        }
-
-        $invoices = $invoiceQuery->limit(100)->get();
-
-        // For each invoice, if it has no lines, synthesize a virtual line from the PO
-        $invoices->each(function ($invoice) {
-            if ($invoice->lines->isEmpty() && $invoice->purchaseOrder) {
-                $po   = $invoice->purchaseOrder;
-                $item = $po->item;
-                if ($po && $item) {
-                    // Build a synthetic line object that mirrors InvoiceLine structure
-                    $syntheticLine = new \stdClass();
-                    $syntheticLine->id                = 'po_' . $po->id; // virtual ID
-                    $syntheticLine->invoice_id        = $invoice->id;
-                    $syntheticLine->item_id           = $item->id;
-                    $syntheticLine->item              = $item;
-                    $syntheticLine->quantity          = $po->quantity;
-                    $syntheticLine->unit_price        = $po->unit_price ?? $item->unit_price;
-                    $syntheticLine->uom               = $item->uom ?? 'unit';
-                    $syntheticLine->is_synthetic      = true;
-                    $invoice->setRelation('lines', collect([$syntheticLine]));
-                }
-            }
+        $flaggedItems = $flaggedItems->reject(function($item) use ($pendingItemIds) {
+            return in_array($item->id, $pendingItemIds);
         });
 
-        if ($request->filled('invoice_id')) {
-            $preselectedInvoice = $invoices->firstWhere('id', $request->invoice_id);
+        $suggestedItems = collect();
+
+        foreach ($flaggedItems as $item) {
+            $invoiceLine = \App\Models\InvoiceLine::where('item_id', $item->id)
+                ->whereHas('invoice', function ($q) {
+                    $q->whereNotIn('status', ['Paid', 'paid']);
+                })
+                ->with(['invoice.supplier'])
+                ->latest()
+                ->first();
+
+            if (!$invoiceLine) {
+                continue;
+            }
+
+            $invoice  = $invoiceLine->invoice;
+            $supplier = $invoice->supplier;
+            $isExpired = $item->isExpired();
+            $isDamaged = $item->isDamaged();
+
+            $maxReturnableFromInvoice = (int)$invoiceLine->quantity;
+
+            $addSuggestion = function ($reason, $returnableQty) use ($item, $invoiceLine, $invoice, $supplier) {
+                return [
+                    'item_id'          => $item->id,
+                    'item_name'        => $item->name,
+                    'invoice_line_id'  => $invoiceLine->id,
+                    'invoice_id'       => $invoice->id,
+                    'invoice_number'   => $invoice->invoice_number,
+                    'supplier_id'      => $supplier?->id,
+                    'supplier_name'    => $supplier?->name ?? 'Unknown Supplier',
+                    'accepts_returns'  => $supplier?->accepts_returns ?? true,
+                    'quantity'         => $item->quantity,
+                    'returnable_qty'   => $returnableQty,
+                    'unit_price'       => (float)$invoiceLine->unit_price,
+                    'uom'              => $invoiceLine->uom ?? 'unit',
+                    'expiry_date'      => $item->expiry_date?->format('d M Y'),
+                    'is_expired'       => $reason === 'expired',
+                    'is_damaged'       => $reason === 'damaged',
+                    'damage_reason'    => $item->damage_reason ?? '',
+                    'suggested_reason' => $reason,
+                    'suggested'        => true,
+                ];
+            };
+
+            if ($isDamaged && $isExpired) {
+                $damagedQty = (int)$item->damaged_quantity;
+                $expiredQty = max(0, (int)$item->quantity - $damagedQty);
+
+                $returnableDamaged = min($maxReturnableFromInvoice, $damagedQty);
+                $remainingInvoiceQty = max(0, $maxReturnableFromInvoice - $returnableDamaged);
+                $returnableExpired = min($remainingInvoiceQty, $expiredQty);
+
+                if ($returnableDamaged > 0) {
+                    $suggestedItems->push($addSuggestion('damaged', $returnableDamaged));
+                }
+                if ($returnableExpired > 0) {
+                    $suggestedItems->push($addSuggestion('expired', $returnableExpired));
+                }
+            } elseif ($isDamaged) {
+                $returnableQty = min($maxReturnableFromInvoice, (int)$item->damaged_quantity);
+                if ($returnableQty > 0) {
+                    $suggestedItems->push($addSuggestion('damaged', $returnableQty));
+                }
+            } elseif ($isExpired) {
+                $returnableQty = min($maxReturnableFromInvoice, (int)$item->quantity);
+                if ($returnableQty > 0) {
+                    $suggestedItems->push($addSuggestion('expired', $returnableQty));
+                }
+            }
         }
 
-        // If a specific item was pre-selected, try to pre-select the most recent matching invoice
-        if ($preselectedItem) {
-            $preselectedInvoice = $invoices->first(function ($inv) use ($preselectedItem) {
-                return $inv->lines->contains(function ($line) use ($preselectedItem) {
-                    return $line->item_id == $preselectedItem->id;
-                });
-            });
+        $suggestedItems = $suggestedItems->values();
+
+        return view('owner.return_requests.create', compact('suggestedItems'));
+    }
+
+    public function getInvoiceItems(Invoice $invoice)
+    {
+        $invoice->load(['lines.item', 'purchaseOrder.item']);
+        
+        $lines = $invoice->lines->map(function ($line) {
+            $item = $line->item;
+            $currentQuantity = (int) ($item->quantity ?? 0);
+            $damagedQuantity = (int) ($item->damaged_quantity ?? 0);
+            $isExpired = is_object($item) && method_exists($item, 'isExpired') ? $item->isExpired() : false;
+            $isDamaged = is_object($item) && method_exists($item, 'isDamaged') ? $item->isDamaged() : false;
+            
+            $returnableQuantity = min((int)$line->quantity, $currentQuantity);
+            if ($isDamaged) {
+                $returnableQuantity = min($returnableQuantity, $damagedQuantity);
+            }
+            
+            return [
+                'invoice_line_id' => $line->id,
+                'item_id'         => $line->item_id,
+                'item_name'       => $item->name ?? 'Unknown',
+                'quantity'        => (int)$line->quantity,
+                'current_quantity'=> $currentQuantity,
+                'damaged_quantity'=> $damagedQuantity,
+                'returnable_qty'  => $returnableQuantity,
+                'is_expired'      => $isExpired,
+                'is_damaged'      => $isDamaged,
+                'eligible'        => ($isExpired || $isDamaged) && $returnableQuantity > 0,
+                'damage_reason'   => $item->damage_reason ?? '',
+                'unit_price'      => (float)$line->unit_price,
+                'uom'             => $line->uom ?? 'unit',
+            ];
+        });
+
+        if ($invoice->lines->isEmpty() && $invoice->purchaseOrder && $invoice->purchaseOrder->item) {
+            $po = $invoice->purchaseOrder;
+            $item = $po->item;
+            $currentQuantity = (int) ($item->quantity ?? 0);
+            $damagedQuantity = (int) ($item->damaged_quantity ?? 0);
+            $isExpired = is_object($item) && method_exists($item, 'isExpired') ? $item->isExpired() : false;
+            $isDamaged = is_object($item) && method_exists($item, 'isDamaged') ? $item->isDamaged() : false;
+            
+            $returnableQuantity = min((int)$po->quantity, $currentQuantity);
+            if ($isDamaged) {
+                $returnableQuantity = min($returnableQuantity, $damagedQuantity);
+            }
+            
+            $lines->push([
+                'invoice_line_id' => 'po_' . $po->id,
+                'item_id'         => $item->id,
+                'item_name'       => $item->name,
+                'quantity'        => (int)$po->quantity,
+                'current_quantity'=> $currentQuantity,
+                'damaged_quantity'=> $damagedQuantity,
+                'returnable_qty'  => $returnableQuantity,
+                'is_expired'      => $isExpired,
+                'is_damaged'      => $isDamaged,
+                'eligible'        => ($isExpired || $isDamaged) && $returnableQuantity > 0,
+                'damage_reason'   => $item->damage_reason ?? '',
+                'unit_price'      => (float)($po->unit_price ?? $item->unit_price),
+                'uom'             => $item->uom ?? 'unit',
+            ]);
         }
 
-        return view('owner.return_requests.create', compact(
-            'invoices',
-            'preselectedItem',
-            'preselectedInvoice',
-            'preselectedQuantity'
-        ));
+        return response()->json(['items' => $lines]);
     }
 
     public function show(ReturnRequest $returnRequest)
     {
-        $returnRequest->load(['lines.item', 'supplier', 'purchaseOrder.item.supplier', 'creditNote.items.item', 'invoice']);
+        $returnRequest->load(['lines.item', 'supplier', 'purchaseOrder.item.supplier', 'creditNote.items.item', 'invoice', 'createdBy']);
         return view('owner.return_requests.show', compact('returnRequest'));
     }
 
@@ -180,8 +277,10 @@ class ReturnRequestController extends Controller
         $request->merge([
             'items' => [[
                 'invoice_line_id' => $invoiceLine->id,
+                'invoice_id'      => $invoice->id,
                 'quantity'        => (int) $request->input('quantity'),
                 'reason'          => strtolower((string) $request->input('reason')),
+                'damage_remark'   => $request->input('damage_remark') ?? $request->input('notes') ?? 'Damaged item',
             ]],
         ]);
     }
@@ -191,147 +290,230 @@ class ReturnRequestController extends Controller
         $this->normalizeReturnRequestPayload($request);
 
         $request->validate([
-            'invoice_id'              => 'required|exists:invoices,id',
-            'notes'                   => 'nullable|string',
-            'items'                   => 'required|array|min:1',
-            'items.*.invoice_line_id' => 'required',
-            'items.*.quantity'        => 'required|integer|min:0',
-            'items.*.reason'          => 'nullable|in:expired,damaged',
+            'items'                      => 'required|array|min:1',
+            'items.*.invoice_line_id'    => 'required|exists:invoice_lines,id',
+            'items.*.invoice_id'         => 'required|exists:invoices,id',
+            'items.*.quantity'           => 'required|integer|min:1',
+            'items.*.reason'             => 'required|in:expired,damaged',
+            'items.*.damage_remark'      => 'nullable|string|max:500',
+            'notes'                      => 'nullable|string',
         ]);
 
-        $invoice  = Invoice::with(['supplier', 'lines.item', 'purchaseOrder.item'])->findOrFail($request->invoice_id);
-        $supplier = $invoice->supplier;
-
-        if (! $supplier) {
-            return back()->withErrors(['invoice_id' => 'Invoice has no associated supplier.'])->withInput();
-        }
-
-        // Build a unified line map supporting both real invoice_lines and synthetic PO lines
-        $realLineMap = $invoice->lines->keyBy('id');
-
-        // Build synthetic line map from PO if lines are empty
-        $syntheticLineMap = collect();
-        if ($invoice->lines->isEmpty() && $invoice->purchaseOrder) {
-            $po   = $invoice->purchaseOrder;
-            $item = $po->item;
-            if ($po && $item) {
-                $key = 'po_' . $po->id;
-                $syntheticLineMap[$key] = (object) [
-                    'id'         => $key,
-                    'item_id'    => $item->id,
-                    'item'       => $item,
-                    'quantity'   => $po->quantity,
-                    'unit_price' => $po->unit_price ?? $item->unit_price,
-                    'uom'        => $item->uom ?? 'unit',
-                ];
+        // Extra validation: damage_remark is required when reason = damaged
+        foreach ($request->items as $i => $itemData) {
+            if (($itemData['reason'] ?? '') === 'damaged' && empty($itemData['damage_remark'])) {
+                return back()->withErrors(['items' => 'A damage remark is required for all damaged items.'])->withInput();
             }
         }
 
-        $hasReturn = false;
+        // Group submitted items by invoice_id
+        $groupedByInvoice = collect($request->items)->groupBy('invoice_id');
 
-        foreach ($request->items as $itemData) {
-            $lineId   = $itemData['invoice_line_id'];
-            $quantity = (int) ($itemData['quantity'] ?? 0);
-            if ($quantity <= 0) continue;
+        $createdRequests = [];
 
-            // Try real line first, then synthetic
-            $invoiceLine = $realLineMap[$lineId] ?? $syntheticLineMap[$lineId] ?? null;
+        foreach ($groupedByInvoice as $invoiceId => $itemsForInvoice) {
+            $invoice  = Invoice::with(['supplier', 'lines.item'])->findOrFail($invoiceId);
+            $supplier = $invoice->supplier;
 
-            if (! $invoiceLine) {
-                return back()->withErrors(['items' => 'Selected item does not belong to the chosen invoice.'])->withInput();
-            }
-            $item = $invoiceLine->item ?? \App\Models\Item::find($invoiceLine->item_id);
-            if (! $item) {
-                return back()->withErrors(['items' => 'Selected return item no longer exists in inventory.'])->withInput();
+            if ($invoice->isPaid()) {
+                return back()->withErrors(['items' => "Invoice {$invoice->invoice_number} has been paid and cannot be used for a return request."])->withInput();
             }
 
-            $returnableQty = min((int) $invoiceLine->quantity, (int) $item->quantity);
-            if ($item->isDamaged()) {
-                $returnableQty = min($returnableQty, (int) $item->damaged_quantity);
+            if (!$supplier) {
+                return back()->withErrors(['items' => "Invoice {$invoice->invoice_number} has no associated supplier."])->withInput();
             }
 
-            if ($quantity > $returnableQty) {
-                $itemName = optional($invoiceLine->item)->name ?? 'item';
-                return back()->withErrors(['items' => "Return quantity for {$itemName} cannot exceed remaining eligible inventory ({$returnableQty})."])->withInput();
+            $realLineMap = $invoice->lines->keyBy('id');
+
+            // Validate items by accumulating quantities per invoice line
+            $lineQuantities = [];
+            foreach ($itemsForInvoice as $itemData) {
+                $lineId = $itemData['invoice_line_id'];
+                $reason = strtolower($itemData['reason'] ?? '');
+                $qty = (int)($itemData['quantity'] ?? 0);
+                
+                if (!isset($lineQuantities[$lineId])) {
+                    $lineQuantities[$lineId] = ['total' => 0, 'damaged' => 0, 'expired' => 0];
+                }
+                $lineQuantities[$lineId]['total'] += $qty;
+                if ($reason === 'damaged') {
+                    $lineQuantities[$lineId]['damaged'] += $qty;
+                } elseif ($reason === 'expired') {
+                    $lineQuantities[$lineId]['expired'] += $qty;
+                }
             }
-            if ($quantity > 0 && empty($itemData['reason'])) {
-                $itemName = optional($invoiceLine->item)->name ?? 'item';
-                return back()->withErrors(['items' => "Please select a return reason for {$itemName}."])->withInput();
+
+            foreach ($lineQuantities as $lineId => $qtys) {
+                $invoiceLine = $realLineMap[$lineId] ?? null;
+
+                if (!$invoiceLine) {
+                    return back()->withErrors(['items' => 'A selected item does not belong to its invoice.'])->withInput();
+                }
+
+                $item = $invoiceLine->item ?? \App\Models\Item::find($invoiceLine->item_id);
+                if (!$item) {
+                    return back()->withErrors(['items' => 'A selected return item no longer exists in inventory.'])->withInput();
+                }
+
+                $hasPending = \App\Models\ReturnRequestLine::where('item_id', $item->id)
+                    ->whereHas('returnRequest', function($q) {
+                        $q->where('status', 'Pending');
+                    })->exists();
+
+                if ($hasPending) {
+                    return back()->withErrors(['items' => "{$item->name} already has a pending return request. Please wait for the supplier to process it first."])->withInput();
+                }
+
+                $maxReturnableTotal = min((int)$invoiceLine->quantity, (int)$item->quantity);
+
+                if ($qtys['total'] > $maxReturnableTotal) {
+                    return back()->withErrors(['items' => "Total return quantity for {$item->name} ({$qtys['total']}) cannot exceed available quantity ({$maxReturnableTotal})."])->withInput();
+                }
+
+                if ($qtys['damaged'] > 0) {
+                    if (!$item->isDamaged()) {
+                        return back()->withErrors(['items' => "{$item->name} is not flagged as damaged."])->withInput();
+                    }
+                    $maxDamaged = (int)$item->damaged_quantity;
+                    if ($qtys['damaged'] > $maxDamaged) {
+                        return back()->withErrors(['items' => "Damaged return quantity for {$item->name} ({$qtys['damaged']}) cannot exceed available damaged stock ({$maxDamaged})."])->withInput();
+                    }
+                }
+
+                if ($qtys['expired'] > 0) {
+                    if (!$item->isExpired()) {
+                        return back()->withErrors(['items' => "{$item->name} is not expired and cannot be returned as expired stock."])->withInput();
+                    }
+                }
             }
-            $reason = strtolower($itemData['reason'] ?? '');
-            if ($quantity > 0 && $item->isDamaged() && $reason !== 'damaged') {
-                return back()->withErrors(['items' => "{$item->name} is flagged as damaged and must be returned as damaged stock."])->withInput();
+
+            // Generate Return Request Number — format: RR-YYYYMMDD-XXXX
+            // Each RR gets a unique daily sequence number.
+            $today      = now()->format('Ymd');
+            $prefix     = 'RR-' . $today . '-';
+            
+            // Query the latest once or just use the latest in the DB without double-adding.
+            $lastToday  = ReturnRequest::where('return_number', 'like', $prefix . '%')
+                ->orderByDesc('return_number')->first();
+            $nextIndex  = 1;
+            if ($lastToday && preg_match('/RR-\d{8}-(\d+)/', $lastToday->return_number, $matches)) {
+                $nextIndex = intval($matches[1]) + 1;
             }
-            if ($quantity > 0 && $reason === 'expired' && ! $item->isExpired()) {
-                return back()->withErrors(['items' => "{$item->name} is not expired and cannot be returned as expired stock."])->withInput();
-            }
-            $hasReturn = true;
-        }
+            $returnNumber = $prefix . str_pad($nextIndex, 4, '0', STR_PAD_LEFT);
 
-        if (! $hasReturn) {
-            return back()->withErrors(['items' => 'Please return at least one item quantity greater than zero.'])->withInput();
-        }
-
-        $lastRequest = ReturnRequest::orderByDesc('id')->first();
-        $nextIndex   = 1;
-        if ($lastRequest && preg_match('/RR-(\d+)/', $lastRequest->return_number, $matches)) {
-            $nextIndex = intval($matches[1]) + 1;
-        }
-        $returnNumber = 'RR-' . str_pad($nextIndex, 4, '0', STR_PAD_LEFT);
-
-        $returnRequest = ReturnRequest::create([
-            'return_number'     => $returnNumber,
-            'invoice_id'        => $invoice->id,
-            'invoice_number'    => $invoice->invoice_number,
-            'supplier_id'       => $supplier->id,
-            'purchase_order_id' => $invoice->purchase_order_id,
-            'notes'             => $request->notes,
-            'status'            => 'Draft',
-            'request_date'      => now()->toDateString(),
-            'created_by'        => auth()->id(),
-        ]);
-
-        $returnedQuantitiesByItem = [];
-
-        foreach ($request->items as $itemData) {
-            $lineId   = $itemData['invoice_line_id'];
-            $quantity = (int) ($itemData['quantity'] ?? 0);
-            if ($quantity <= 0) continue;
-
-            $invoiceLine = $realLineMap[$lineId] ?? $syntheticLineMap[$lineId];
-            $unitPrice   = (float) $invoiceLine->unit_price;
-            $subtotal    = $quantity * $unitPrice;
-
-            \App\Models\ReturnRequestLine::create([
-                'return_request_id' => $returnRequest->id,
-                'invoice_line_id'   => is_numeric($lineId) ? intval($lineId) : null,
-                'item_id'           => $invoiceLine->item_id,
-                'quantity'          => $quantity,
-                'uom'               => $invoiceLine->uom ?? 'unit',
-                'reason'            => strtolower($itemData['reason']),
-                'unit_price'        => $unitPrice,
-                'subtotal'          => $subtotal,
+            $returnRequest = ReturnRequest::create([
+                'return_number'     => $returnNumber,
+                'invoice_id'        => $invoice->id,
+                'invoice_number'    => $invoice->invoice_number,
+                'supplier_id'       => $supplier->id,
+                'purchase_order_id' => $invoice->purchase_order_id,
+                'notes'             => $request->notes,
+                'status'            => 'Pending',
+                'request_date'      => now()->toDateString(),
+                'created_by'        => auth()->id(),
             ]);
 
-            $returnedQuantitiesByItem[$invoiceLine->item_id] = ($returnedQuantitiesByItem[$invoiceLine->item_id] ?? 0) + $quantity;
-        }
+            $returnedQtyByItem = [];
 
-        foreach ($returnedQuantitiesByItem as $itemId => $returnedQuantity) {
-            $item = \App\Models\Item::find($itemId);
-            if (! $item || ! $item->isDamaged()) {
-                continue;
+            foreach ($itemsForInvoice as $itemData) {
+                $lineId      = $itemData['invoice_line_id'];
+                $quantity    = (int)$itemData['quantity'];
+                $invoiceLine = $realLineMap[$lineId];
+                $unitPrice   = (float)$invoiceLine->unit_price;
+
+                \App\Models\ReturnRequestLine::create([
+                    'return_request_id' => $returnRequest->id,
+                    'invoice_line_id'   => (int)$lineId,
+                    'item_id'           => $invoiceLine->item_id,
+                    'quantity'          => $quantity,
+                    'uom'               => $invoiceLine->uom ?? 'unit',
+                    'reason'            => strtolower($itemData['reason']),
+                    'damage_remark'     => strtolower($itemData['reason']) === 'damaged'
+                                            ? ($itemData['damage_remark'] ?? null)
+                                            : null,
+                    'unit_price'        => $unitPrice,
+                    'subtotal'          => $quantity * $unitPrice,
+                ]);
+
+                $returnedQtyByItem[$invoiceLine->item_id] = ($returnedQtyByItem[$invoiceLine->item_id] ?? 0);
+                if (strtolower($itemData['reason']) === 'damaged') {
+                    $returnedQtyByItem[$invoiceLine->item_id] += $quantity;
+                }
             }
 
-            $remainingDamagedQuantity = max(0, (int) $item->damaged_quantity - $returnedQuantity);
-            $item->update([
-                'damaged_quantity' => $remainingDamagedQuantity,
-                'is_damaged'       => $remainingDamagedQuantity > 0,
-                'damage_reason'    => $remainingDamagedQuantity > 0 ? $item->damage_reason : null,
-            ]);
+            // Update damaged stock counts
+            foreach ($returnedQtyByItem as $itemId => $damagedReturnedQty) {
+                if ($damagedReturnedQty <= 0) continue;
+                $item = \App\Models\Item::find($itemId);
+                if ($item && $item->isDamaged()) {
+                    $remaining = max(0, (int)$item->damaged_quantity - $damagedReturnedQty);
+                    $item->update([
+                        'damaged_quantity' => $remaining,
+                        'is_damaged'       => $remaining > 0,
+                        'damage_reason'    => $remaining > 0 ? $item->damage_reason : null,
+                    ]);
+                }
+            }
+
+            if ($supplier && $supplier->user) {
+                \App\Models\Notification::send(
+                    $supplier->user,
+                    'return_request_created',
+                    'A return request has been submitted. Please log in to review.',
+                    [
+                        'return_number'  => $returnRequest->return_number,
+                        'invoice_number' => $returnRequest->invoice_number,
+                        'reason'         => $returnRequest->lines->pluck('reason')->filter()->unique()->join(', '),
+                    ]
+                );
+
+                // Send WhatsApp to supplier (CallMeBot preferred)
+                try {
+                    $callMeBotPhone = trim((string) \App\Models\Setting::get('callmebot_phone', config('services.callmebot.phone')));
+                    $callMeBotApiKey = trim((string) \App\Models\Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
+
+                    $portalLink = $supplier->portal_link ?? route('supplier.login');
+                    $firstLine = $returnRequest->lines->first();
+                    $data = [
+                        'item_name' => optional($firstLine?->item)->name ?? '',
+                        'quantity'  => $returnRequest->lines->sum('quantity'),
+                        'reason'    => $returnRequest->lines->pluck('reason')->filter()->unique()->join(', '),
+                    ];
+
+                    if ($callMeBotPhone !== '' && $callMeBotApiKey !== '') {
+                        $cb = new \App\Services\CallMeBotService();
+                        $cb->sendReturnRequestNotificationToSupplier($data, $supplier->contact_phone, $portalLink);
+                    } elseif ($supplier->contact_phone && config('services.twilio.sid')) {
+                        $w = new \App\Services\WhatsAppService();
+                        $msg = "↩ RETURN REQUEST CREATED\n\nItem: " . $data['item_name'] . "\nQuantity: " . $data['quantity'] . "\nReason: " . $data['reason'] . "\n\nPlease review through the Supplier Portal.\n\nPortal:\n" . $portalLink;
+                        $w->sendMessage($supplier->contact_phone, $msg);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::channel('whatsapp_alerts')->error('Failed to send return request whatsapp', ['return' => $returnRequest->return_number, 'error' => $e->getMessage()]);
+                }
+            }
+
+            // Send Email Notification to Supplier
+            try {
+                (new \App\Services\EmailNotificationService)->sendReturnRequestCreatedToSupplier($returnRequest);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Supplier Return Request Created email failed', ['return' => $returnRequest->return_number, 'error' => $e->getMessage()]);
+            }
+
+            $createdRequests[] = $returnRequest;
         }
 
-        return redirect()->route('owner.return-requests.show', $returnRequest)->with('success', 'Return request drafted successfully. Please review and submit.');
+        if (count($createdRequests) === 1) {
+            return redirect()->route('owner.return-requests.show', $createdRequests[0])
+                ->with('success', 'Return Request submitted successfully and is awaiting supplier approval.');
+        }
+
+        $rrNumbers = implode(', ', array_map(fn($r) => $r->return_number, $createdRequests));
+        return redirect()->route('owner.return-requests.index')
+            ->with('success', count($createdRequests) . ' return requests submitted successfully and are awaiting supplier approval (' . $rrNumbers . ').');
     }
+
+
 
     public function submit(ReturnRequest $returnRequest)
     {
@@ -384,6 +566,13 @@ class ReturnRequestController extends Controller
             }
         }
 
+        // Send Email Notification to Supplier
+        try {
+            (new \App\Services\EmailNotificationService)->sendReturnRequestCreatedToSupplier($returnRequest);
+        } catch (\Throwable $e) {
+            Log::error('Supplier Return Request Created email failed', ['return' => $returnRequest->return_number, 'error' => $e->getMessage()]);
+        }
+
         return redirect()->route('owner.return-requests.show', $returnRequest)->with('success', 'Return request submitted successfully.');
     }
 
@@ -407,8 +596,11 @@ class ReturnRequestController extends Controller
                 'status' => 'in:Approved,Rejected',
                 'reason' => 'nullable|string|max:500',
             ]);
-            $oldStatus = $returnRequest->status;
-            $returnRequest->update(['status' => $request->status]);
+        $oldStatus = $returnRequest->status;
+        $returnRequest->update([
+            'status'     => $request->status,
+            'updated_by' => auth()->id(),
+        ]);
 
             // Create credit note if approved
             if ($request->status === 'Approved' && $oldStatus !== 'Approved') {
@@ -428,13 +620,20 @@ class ReturnRequestController extends Controller
                     'status' => 'Unused',
                     'reason' => $request->reason,
                 ]);
+
+                // Automatically set the linked invoice status to 'Settled'
+                if ($returnRequest->invoice_id) {
+                    $linkedInvoice = Invoice::find($returnRequest->invoice_id);
+                    if ($linkedInvoice && !$linkedInvoice->isPaid()) {
+                        $linkedInvoice->update(['status' => 'Settled']);
+                    }
+                }
             }
 
             // Notify owner
             $owner = \App\Models\User::where('role', 'owner')->first();
             if ($owner) {
-                Notification::send(
-                    $owner,
+                \App\Models\Notification::sendToOwners(
                     'return_request_' . strtolower($request->status),
                     "Return request {$returnRequest->return_number} has been " . strtolower($request->status),
                     ['rr_id' => $returnRequest->id]

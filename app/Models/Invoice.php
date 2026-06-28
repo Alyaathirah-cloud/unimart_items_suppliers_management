@@ -17,14 +17,26 @@ class Invoice extends Model
         'invoice_date',
         'total_amount',
         'payment_due_date',
+        'paid_date',
+        'confirmed_by',
         'status',
         'source',
+        'sold_estimates',
     ];
+
+    // Valid statuses for the new workflow
+    const STATUS_UNPAID  = 'Unpaid';
+    const STATUS_SETTLED = 'Settled';
+    const STATUS_PAID    = 'Paid';
+    const STATUS_PENDING_PAYMENT = 'Pending Payment'; // Display alias
+
 
     protected $casts = [
         'invoice_date'     => 'date',
         'payment_due_date' => 'date',
+        'paid_date'        => 'date',
         'total_amount'     => 'decimal:2',
+        'sold_estimates'   => 'array',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
@@ -54,6 +66,11 @@ class Invoice extends Model
         return $this->hasMany(ReturnRequest::class, 'invoice_id');
     }
 
+    public function auditLogs()
+    {
+        return $this->hasMany(InvoiceAuditLog::class);
+    }
+
     // ── Financial helpers ────────────────────────────────────────────────────
 
     /**
@@ -75,46 +92,64 @@ class Invoice extends Model
     // ── Status helpers ───────────────────────────────────────────────────────
 
     /**
-     * Compute the dynamic display status:
-     *  - Paid             → locked and paid
-     *  - Settled          → partially or fully credited via return request
-     *  - Overdue          → past due date and not paid
-     *  - Pending          → default active state
+     * Compute the display status using the new Unpaid → Settled → Paid flow.
+     *  - Paid     → manually locked by supplier after receiving payment
+     *  - Settled  → return request linked to this invoice was approved
+     *  - Unpaid   → default after invoice is created
+     *
+     * Legacy statuses (Active, Partially Credited, Overdue) are mapped for
+     * backward compatibility.
      */
     public function computeStatus(): string
     {
-        if ($this->status === 'paid') {
-            return 'paid';
-        }
+        $s = $this->status;
 
-        if ($this->payment_due_date && Carbon::today()->gt($this->payment_due_date)) {
-            return 'Overdue';
-        }
+        // New canonical statuses
+        if ($s === self::STATUS_PAID   || $s === 'paid')    return 'Paid';
+        if ($s === self::STATUS_SETTLED || $s === 'settled') return 'Settled';
+        if ($s === self::STATUS_UNPAID  || $s === 'unpaid')  return 'Unpaid';
 
-        if ($this->getTotalCreditDeduction() > 0 || $this->status === 'Partially Credited') {
-            return 'Partially Credited';
-        }
+        // Legacy backward-compat mapping
+        if ($s === 'Active' || $s === 'active')  return 'Unpaid';
+        if ($s === 'Partially Credited')          return 'Settled';
+        if ($s === 'Overdue')                     return 'Unpaid';
 
-        return 'Active';
+        return 'Unpaid';
     }
 
     /**
-     * CSS class / colour key for the computed status.
+     * Compute the display status for the UI.
+     * Both Unpaid and Settled map to "Pending Payment".
+     */
+    public function getDisplayStatus(): string
+    {
+        $internalStatus = $this->computeStatus();
+        if ($internalStatus === 'Unpaid' || $internalStatus === 'Settled') {
+            return self::STATUS_PENDING_PAYMENT;
+        }
+        return $internalStatus;
+    }
+
+    /**
+     * CSS colour key for the computed status.
      */
     public function statusColor(): string
     {
-        return match ($this->computeStatus()) {
-            'Active'             => 'blue',
-            'Partially Credited' => 'purple',
-            'Overdue'            => 'red',
-            'paid'               => 'green',
-            default              => 'gray',
+        return match ($this->getDisplayStatus()) {
+            'Paid' => 'green',
+            self::STATUS_PENDING_PAYMENT => 'orange',
+            default => 'gray',
         };
     }
 
     public function isPaid(): bool
     {
-        return $this->status === 'paid';
+        return in_array($this->status, ['Paid', 'paid']);
+    }
+
+    public function isSettled(): bool
+    {
+        return in_array($this->status, ['Settled', 'settled', 'Partially Credited']);
     }
 
     public function isLocked(): bool

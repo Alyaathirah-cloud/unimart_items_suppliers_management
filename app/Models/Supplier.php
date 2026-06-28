@@ -30,10 +30,19 @@ class Supplier extends Model
         'invite_email_status',
         'invite_whatsapp_status',
         'user_id',
+        'accepts_returns',
+        'telegram_chat_id',
+        'telegram_connection_token',
+        'telegram_username',
+        'telegram_connected',
+        'telegram_connected_at',
     ];
 
     protected $casts = [
-        'portal_enabled' => 'boolean',
+        'portal_enabled'      => 'boolean',
+        'accepts_returns'     => 'boolean',
+        'telegram_connected'  => 'boolean',
+        'telegram_connected_at' => 'datetime',
     ];
 
     public function user()
@@ -64,6 +73,32 @@ class Supplier extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function generateTelegramToken()
+    {
+        // Always regenerate a fresh token so old links can't be reused
+        $this->telegram_connection_token = \Illuminate\Support\Str::random(32);
+        $this->save();
+        return $this->telegram_connection_token;
+    }
+
+    /**
+     * Return true if the supplier has a verified Telegram connection.
+     */
+    public function isTelegramConnected(): bool
+    {
+        return $this->telegram_connected && !empty($this->telegram_chat_id);
+    }
+
+    /**
+     * Build the Telegram deep-link for connecting this supplier's account.
+     */
+    public function telegramConnectUrl(): string
+    {
+        $botUsername = config('services.telegram.bot_username', env('TELEGRAM_BOT_USERNAME'));
+        $token = $this->generateTelegramToken();
+        return "https://t.me/{$botUsername}?start={$token}";
     }
 }
 

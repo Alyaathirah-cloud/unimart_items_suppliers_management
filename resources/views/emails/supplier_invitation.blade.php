@@ -20,6 +20,14 @@
                 <p style="margin:0;"><strong>Password :</strong> {{ $password }}</p>
             </div>
             <p style="margin:0 0 16px; line-height:1.55; color:#5a6a85;">Please log in and change your password after first login.</p>
+            
+            <div style="background:#e8f0fb;border:1px solid #b5d4f4;border-radius:10px;padding:14px 16px;margin:0 0 18px;line-height:1.55;color:#1e3a6e;font-size:0.92rem;">
+                <p style="margin:0 0 10px; font-weight:700;">📱 Telegram Notifications</p>
+                <p style="margin:0 0 10px;">To receive instant notifications for Purchase Orders, Return Requests, Invoices, Credit Notes, and reminders, please connect your Telegram account by clicking the link below:</p>
+                <p style="margin:0 0 10px;"><a href="https://t.me/naa_um_bot?start={{ $telegramToken ?? ($data['telegram_token'] ?? '') }}" style="color:#0f2044;font-weight:700;text-decoration:underline;">https://t.me/naa_um_bot?start={{ $telegramToken ?? ($data['telegram_token'] ?? '') }}</a></p>
+                <p style="margin:0; font-size:0.85rem;">Open the bot and press <strong>Start</strong> to activate Telegram notifications.</p>
+            </div>
+
             <p style="margin:0 0 16px; line-height:1.55; color:#5a6a85;"><strong>If you have any questions, please contact:</strong><br>{{ $ownerContact }}</p>
             <p style="margin:0; line-height:1.5; color:#7a8fa8; font-size:0.88rem;">Thank you.<br>{{ $companyName }}</p>
         </div>

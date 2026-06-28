@@ -66,7 +66,28 @@ class Notification extends Model
             }
         }
 
+        // Send Telegram notification if the user is a supplier and has connected Telegram
+        $supplier = \App\Models\Supplier::where('user_id', $user->id)->first();
+        if ($supplier && !empty($supplier->telegram_chat_id)) {
+            try {
+                $telegramMessage = static::buildTelegramMessage($type, $message, $data);
+                if ($telegramMessage) {
+                    (new \App\Services\TelegramService())->send($telegramMessage, $supplier->telegram_chat_id);
+                }
+            } catch (\Throwable $e) {
+                // Telegram failure should not block app behavior
+            }
+        }
+
         return $notification;
+    }
+
+    public static function sendToOwners(string $type, string $message, array $data = [])
+    {
+        $owners = User::where('role', 'owner')->get();
+        foreach ($owners as $owner) {
+            static::send($owner, $type, $message, $data);
+        }
     }
 
     protected static function buildMailable(string $type, string $message, array $data)
@@ -111,6 +132,48 @@ class Notification extends Model
                 );
             default:
                 return new AppNotificationMail($message);
+        }
+    }
+
+    protected static function buildTelegramMessage(string $type, string $message, array $data)
+    {
+        switch ($type) {
+            case 'purchase_order_created':
+                return "📦 PURCHASE ORDER CREATED\n\n" .
+                       "PO ID: #" . ($data['po_number'] ?? 'N/A') . "\n" .
+                       "Item: " . ($data['item_name'] ?? 'Multiple Items') . "\n" .
+                       "Quantity: " . ($data['quantity'] ?? 0) . "\n\n" .
+                       "Please log in to review.";
+            case 'purchase_order_updated':
+                return "✏️ PURCHASE ORDER UPDATED\n\n" .
+                       "PO ID: #" . ($data['po_number'] ?? 'N/A') . "\n\n" .
+                       "Note: Changes have been made and review is required.";
+            case 'po_approved':
+            case 'purchase_order_approved':
+                return "✅ PURCHASE ORDER APPROVED\n\n" .
+                       "PO ID: #" . ($data['po_number'] ?? 'N/A');
+            case 'po_rejected':
+            case 'purchase_order_rejected':
+                return "❌ PURCHASE ORDER REJECTED\n\n" .
+                       "PO ID: #" . ($data['po_number'] ?? 'N/A') . "\n" .
+                       "Reason: " . ($data['reason'] ?? 'Not specified');
+            case 'po_received':
+            case 'purchase_order_delivered':
+                return "📥 PURCHASE ORDER RECEIVED\n\n" .
+                       "PO ID: #" . ($data['po_number'] ?? 'N/A');
+            case 'return_request_created':
+                return "↩️ RETURN REQUEST CREATED\n\n" .
+                       "Return ID: #" . ($data['return_number'] ?? 'N/A') . "\n" .
+                       "Item: " . ($data['item_name'] ?? 'N/A') . "\n" .
+                       "Reason: " . ($data['reason'] ?? 'N/A');
+            case 'return_request_approved':
+                return "✅ RETURN REQUEST APPROVED\n\n" .
+                       "Return ID: #" . ($data['return_number'] ?? 'N/A');
+            case 'return_request_rejected':
+                return "❌ RETURN REQUEST REJECTED\n\n" .
+                       "Return ID: #" . ($data['return_number'] ?? 'N/A');
+            default:
+                return "🔔 NOTIFICATION\n\n" . $message;
         }
     }
 }

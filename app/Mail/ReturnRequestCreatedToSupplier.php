@@ -14,12 +14,14 @@ class ReturnRequestCreatedToSupplier extends Mailable implements ShouldQueue
     public $returnNumber;
     public $itemName;
     public $reason;
+    public $loginUrl;
 
-    public function __construct(string $returnNumber, string $itemName, string $reason)
+    public function __construct(string $returnNumber, string $itemName, string $reason, string $loginUrl)
     {
         $this->returnNumber = $returnNumber;
         $this->itemName = $itemName;
         $this->reason = $reason;
+        $this->loginUrl = $loginUrl;
     }
 
     public function build()

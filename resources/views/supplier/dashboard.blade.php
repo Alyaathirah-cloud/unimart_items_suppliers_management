@@ -59,7 +59,7 @@
         .page-sub   { font-size: 0.85rem; color: #7a8fa8; margin-top: 4px; }
 
         /* Stat cards */
-        .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 32px; }
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
         .stat-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 6px rgba(15,32,68,0.07); position: relative; }
         .stat-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #7a8fa8; }
         .stat-value { font-size: 2.4rem; font-weight: 800; color: #0f2044; margin: 8px 0 4px; line-height: 1; }
@@ -135,20 +135,18 @@
             <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" placeholder="Search orders, items...">
         </div>
-        <div class="topbar-icons">
-            <button class="icon-btn">🔔<span class="badge-dot"></span></button>
-            <button class="icon-btn">⚙</button>
-            <button class="icon-btn">⋯</button>
-            <div class="topbar-profile">
-                <div class="profile-info">
-                    <div class="profile-name">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            </div>
+        <div class="topbar-right" style="margin-left: auto; display: flex; align-items: center; gap: 20px;">
+            <!-- Notification Bell -->
+            <a href="{{ route('supplier.notifications.index') }}" style="text-decoration:none;position:relative;">
+                <span style="font-size:1.2rem;">🔔</span>
+                @if(auth()->user()->unreadNotifications->count() > 0)
+                    <span style="position:absolute;top:-2px;right:-2px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:700;padding:2px 5px;border-radius:10px;">
+                        {{ auth()->user()->unreadNotifications->count() }}
+                    </span>
+                @endif
+            </a>
+            
+            @include('supplier.components.topbar-profile')
         </div>
     </div>
 
@@ -163,6 +161,8 @@
             <div class="status-online"><span class="dot-green"></span> ONLINE</div>
         </div>
 
+
+
         @if(session('success'))
             <div class="flash flash-success">{{ session('success') }}</div>
         @endif
@@ -170,23 +170,27 @@
             <div class="flash" style="background:#fdedec; color:#c0392b; border: 1px solid #f5b7b1;">{{ session('error') }}</div>
         @endif
 
-        <!-- Stat Cards (2 cards only — no Total Value Pending) -->
+        <!-- Stat Cards -->
         <div class="stat-row">
-            <div class="stat-card">
-                <div class="stat-label">Pending POs</div>
+            <div class="stat-card" style="border-left: 4px solid #4a90d9;">
+                <div class="stat-label">PENDING POS <span style="float:right;font-size:1rem;">📦</span></div>
                 <div class="stat-value">{{ $orders->where('status','Pending')->count() }}</div>
                 <div class="stat-hint">Total orders assigned to you</div>
-                <div class="stat-icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Pending Returns</div>
-                <div class="stat-value">{{ $returns->count() }}</div>
+            <div class="stat-card" style="border-left: 4px solid #e74c3c;">
+                <div class="stat-label">PENDING RETURNS <span style="float:right;font-size:1rem;">🔄</span></div>
+                <div class="stat-value">{{ $pendingReturnsCount }}</div>
                 <div class="stat-hint">Requires attention</div>
-                <div class="stat-icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
-                </div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #f39c12;">
+                <div class="stat-label">UNPAID INVOICES <span style="float:right;font-size:1rem;">📄</span></div>
+                <div class="stat-value">{{ $invoicesAwaitingCount }}</div>
+                <div class="stat-hint">Awaiting payment</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #27ae60;">
+                <div class="stat-label">CREDIT NOTES <span style="float:right;font-size:1rem;">📄</span></div>
+                <div class="stat-value">{{ \App\Models\CreditNote::where('supplier_id', auth()->user()->supplier?->id)->count() }}</div>
+                <div class="stat-hint">Issued</div>
             </div>
         </div>
 
@@ -195,117 +199,42 @@
             <div class="section-header">
                 <div class="section-title">
                     <svg width="18" height="18" fill="none" stroke="#0f2044" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    My Purchase Orders
+                    Recent Purchase Orders
                 </div>
                 <a href="{{ route('supplier.purchase-orders.index') }}" class="view-all">View All →</a>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Order ID</th>
-                        <th>Item Details</th>
-                        <th>Quantity</th>
-                        <th>Delivery</th>
+                        <th>PO ID</th>
+                        <th>Created At</th>
+                        <th>Total Amount</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($orders as $order)
                         <tr>
                             <td><strong>#{{ $order->po_number }}</strong></td>
-                            <td>{{ optional($order->item)->name ?? '—' }}</td>
-                            <td>{{ $order->quantity }} Units</td>
-                            <td class="delivery-col">
-                                @if($order->delivery)
-                                    {{ $order->delivery->delivery_date?->format('M d, Y') }}<br>
-                                    {{ $order->delivery->delivery_date?->format('h:i A') }}
-                                @else
-                                    <span style="color:#9daec5">—</span>
-                                @endif
-                            </td>
+                            <td>{{ $order->created_at->format('d M Y') }}</td>
+                            <td><strong>RM {{ number_format($order->final_amount ?? $order->getComputedTotal(), 2) }}</strong></td>
                             <td>
                                 @php
                                     $s = $order->status;
-                                    $cls = $s === 'Pending' ? 'badge-pending' : ($s === 'Approved' ? 'badge-approved' : 'badge-rejected');
+                                    $cls = $s === 'Pending' ? 'badge-pending' : ($s === 'Approved' ? 'badge-approved' : (in_array($s, ['Delivered', 'Received']) ? 'badge-approved' : 'badge-rejected'));
                                 @endphp
                                 <span class="badge {{ $cls }}">{{ strtoupper($s) }}</span>
                             </td>
-                            <td>
-                                @if($order->status === 'Pending')
-                                    <button class="btn btn-outline btn-sm" onclick="toggleApproval({{ $order->id }})">Review</button>
-                                @elseif($order->status === 'Approved' && !$order->delivery)
-                                    <button class="btn btn-sm" style="background:#e8f0fb;color:#1e3a6e;border:1px solid #b5d4f4;" onclick="toggleDelivery({{ $order->id }})">📅 Set Delivery</button>
-                                @elseif($order->status === 'Approved' && $order->delivery)
-                                    <span style="color:#27ae60;font-size:.78rem;font-weight:600;">✓ Scheduled</span>
-                                @else
-                                    <span style="color:#9daec5;font-size:.82rem;">—</span>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <button class="btn btn-outline btn-sm" onclick="openReviewModal({{ $order->id }})">Review</button>
+                                @if(in_array($order->status, ['Pending', 'Approved']) && !$order->delivery)
+                                    <button class="btn btn-sm" style="background:#e8f0fb;color:#1e3a6e;border:1px solid #b5d4f4;margin-left:8px;" onclick="openDeliveryModal({{ $order->id }})">📅 Set Delivery</button>
                                 @endif
                             </td>
                         </tr>
-                        {{-- Inline approval form --}}
-                        @if($order->status === 'Pending')
-                        <tr class="approve-form-row" id="approval-{{ $order->id }}" style="display:none">
-                            <td colspan="6">
-                                <div class="approve-form-inner">
-                                    <div style="width:100%">
-                                        <div class="approve-form-title">Approve Order #{{ $order->po_number }}</div>
-                                    </div>
-                                    <form action="{{ route('supplier.orders.confirm', $order) }}" method="POST" style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;width:100%" onsubmit="return validateDeliveryForm(this, 'approve_date_{{ $order->id }}', 'approve_time_{{ $order->id }}')">
-                                        @csrf
-                                        <input type="hidden" name="status" value="Approved">
-                                        <div class="form-group">
-                                            <label class="form-label">Scheduled Delivery Date</label>
-                                            <input type="date" name="delivery_date" class="form-input" id="approve_date_{{ $order->id }}" min="{{ now()->addDay()->toDateString() }}" required onchange="validateDeliveryDate(this, 'approve_time_{{ $order->id }}')">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Scheduled Delivery Time</label>
-                                            <input type="time" name="delivery_time" class="form-input" id="approve_time_{{ $order->id }}" min="08:00" max="17:00" onchange="validateDeliveryTime(this, 'approve_date_{{ $order->id }}')">
-                                        </div>
-                                        <button type="button" class="btn btn-cancel" onclick="toggleApproval({{ $order->id }})">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Confirm Approval</button>
-                                    </form>
-                                </div>
-                                <!-- Reject separately -->
-                                <div style="padding: 0 24px 16px; display:flex; gap:10px;">
-                                    <form action="{{ route('supplier.orders.confirm', $order) }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="status" value="Rejected">
-                                        <button type="submit" class="btn btn-sm" style="background:#fdedec;color:#c0392b;border-color:#f5b7b1;">Reject Order</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        @endif
-
-                        {{-- Inline Set Delivery Form (Approved, no delivery yet) --}}
-                        @if($order->status === 'Approved' && !$order->delivery)
-                        <tr class="approve-form-row" id="delivery-{{ $order->id }}" style="display:none">
-                            <td colspan="6">
-                                <div class="approve-form-inner">
-                                    <div style="width:100%">
-                                        <div class="approve-form-title">📅 Set Delivery Schedule for #{{ $order->po_number }}</div>
-                                        <div style="font-size:.78rem;color:#9daec5;margin-bottom:12px;">Mon–Fri: 08:00–17:00 · Saturday: 08:00–12:00 · Sunday: not allowed</div>
-                                    </div>
-                                    <form action="{{ route('supplier.orders.delivery', $order) }}" method="POST" style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;width:100%" onsubmit="return validateDeliveryForm(this, 'dash_delivery_date_{{ $order->id }}', 'dash_delivery_time_{{ $order->id }}')">
-                                        @csrf
-                                        <div class="form-group">
-                                            <label class="form-label">Delivery Date</label>
-                                            <input type="date" name="delivery_date" class="form-input" id="dash_delivery_date_{{ $order->id }}" min="{{ now()->addDay()->toDateString() }}" required onchange="validateDeliveryDate(this, 'dash_delivery_time_{{ $order->id }}')">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Delivery Time</label>
-                                            <input type="time" name="delivery_time" class="form-input" id="dash_delivery_time_{{ $order->id }}" min="08:00" max="17:00" onchange="validateDeliveryTime(this, 'dash_delivery_date_{{ $order->id }}')">
-                                        </div>
-                                        <button type="button" class="btn btn-cancel" onclick="toggleDelivery({{ $order->id }})">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Save Delivery</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        @endif
                     @empty
-                        <tr><td colspan="6" class="empty-state">No purchase orders assigned to you yet.</td></tr>
+                        <tr><td colspan="5" class="empty-state">No purchase orders assigned to you yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -325,7 +254,12 @@
                     <div class="rr-icon">↩</div>
                     <div class="rr-info">
                         <div class="rr-id">#{{ $return->return_number }}</div>
-                        <div class="rr-meta">{{ optional($return->item)->name ?? '—' }} · Qty: {{ $return->quantity }} · {{ $return->reason }}</div>
+                        @php
+                            $totalQty = $return->lines->sum('quantity');
+                            $itemNames = $return->lines->pluck('item.name')->filter()->unique()->join(', ') ?: 'Unknown Item';
+                            $creditAmt = $return->lines->sum('subtotal');
+                        @endphp
+                        <div class="rr-meta">{{ Str::limit($itemNames, 40) }} · Qty: {{ number_format($totalQty) }} · {{ $return->reason }}</div>
                     </div>
                     @php
                         $rs = $return->status;
@@ -334,7 +268,7 @@
                     <span class="badge {{ $rc }}">{{ strtoupper($rs) }}</span>
                     @if($return->status === 'Pending')
                         <div style="display:flex;gap:8px;margin-left:12px">
-                            <button onclick="openApprovalModal({{ $return->id }}, '{{ $return->return_number }}', {{ $return->quantity }}, '{{ addslashes(optional($return->item)->name ?? '') }}', '{{ number_format($return->credit_amount, 2, '.', '') }}')" class="btn btn-sm btn-primary">Accept</button>
+                            <button onclick="openApprovalModal({{ $return->id }}, '{{ $return->return_number }}', {{ $totalQty }}, '{{ addslashes($itemNames) }}', '{{ number_format($creditAmt, 2, '.', '') }}')" class="btn btn-sm btn-primary">Accept</button>
                             <form action="{{ route('supplier.returns.status', $return) }}" method="POST" style="display:inline;">
                                 @csrf
                                 <button name="status" value="Rejected" class="btn btn-sm btn-outline">Reject</button>
@@ -346,8 +280,175 @@
                 <div class="empty-state">No pending return requests at this time.</div>
             @endforelse
         </div>
+
+
     </div>
 </div>
+
+{{-- ── PO Review Modal ── --}}
+@foreach($orders as $order)
+<div id="reviewModal-{{ $order->id }}" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.22);animation:modalIn 0.2s ease;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #f0f4f8;position:sticky;top:0;background:#fff;z-index:10;">
+            <div style="font-size:1.1rem;font-weight:800;color:#0D1B2A;">Purchase Order Details</div>
+            <button style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#9ca3af;line-height:1;padding:2px 6px;border-radius:4px;" onclick="closeReviewModal({{ $order->id }})">✕</button>
+        </div>
+        
+        <div style="padding:24px;">
+            <!-- Purchase Order Information -->
+            <div style="background:#f8fafc;border:1px solid #e5e9f0;border-radius:8px;padding:16px;margin-bottom:24px;">
+                <h4 style="margin:0 0 12px;font-size:0.85rem;text-transform:uppercase;color:#7a8fa8;letter-spacing:0.5px;">Purchase Order Information</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.9rem;">
+                    <div><span style="color:#6b7280;">PO Number:</span> <strong style="color:#0f2044;">#{{ $order->po_number }}</strong></div>
+                    <div><span style="color:#6b7280;">Status:</span> 
+                        @php
+                            $s = $order->status;
+                            $cls = $s === 'Pending' ? 'badge-pending' : ($s === 'Approved' ? 'badge-approved' : (in_array($s, ['Delivered', 'Received']) ? 'badge-approved' : 'badge-rejected'));
+                        @endphp
+                        <span class="badge {{ $cls }}">{{ strtoupper($s) }}</span>
+                    </div>
+                    <div><span style="color:#6b7280;">Supplier:</span> <strong style="color:#0f2044;">{{ optional($order->supplier)->name ?? '—' }}</strong></div>
+                    <div><span style="color:#6b7280;">Created At:</span> <strong style="color:#0f2044;">{{ $order->created_at->format('d M Y, h:i A') }}</strong></div>
+                    <div><span style="color:#6b7280;">Last Updated:</span> <strong style="color:#0f2044;">{{ $order->updated_at->format('d M Y, h:i A') }}</strong></div>
+                    <div><span style="color:#6b7280;">Delivery Schedule:</span> 
+                        <strong style="color:#0f2044;">
+                            @if($order->delivery)
+                                {{ $order->delivery->delivery_date?->format('d M Y') }} at {{ $order->delivery->delivery_time ? \Carbon\Carbon::parse($order->delivery->delivery_time)->format('h:i A') : 'TBD' }}
+                            @else
+                                Not Assigned
+                            @endif
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ordered Items Table -->
+            <h4 style="margin:0 0 12px;font-size:0.85rem;text-transform:uppercase;color:#7a8fa8;letter-spacing:0.5px;">Ordered Items</h4>
+            <div style="border:1px solid #e5e9f0;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+                <table style="margin:0;">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th style="padding:10px 16px;">Item Name</th>
+                            <th style="padding:10px 16px;text-align:center;">Quantity</th>
+                            <th style="padding:10px 16px;text-align:right;">Unit Price</th>
+                            <th style="padding:10px 16px;text-align:right;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($order->orderItems as $item)
+                        <tr>
+                            <td style="padding:12px 16px;border-bottom:1px solid #f0f4f8;font-weight:600;">{{ optional($item->item)->name ?? 'Unknown Item' }}</td>
+                            <td style="padding:12px 16px;border-bottom:1px solid #f0f4f8;text-align:center;">{{ $item->quantity }}</td>
+                            <td style="padding:12px 16px;border-bottom:1px solid #f0f4f8;text-align:right;">RM {{ number_format($item->unit_price, 2) }}</td>
+                            <td style="padding:12px 16px;border-bottom:1px solid #f0f4f8;text-align:right;font-weight:600;">RM {{ number_format($item->subtotal, 2) }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="empty-state">No items found.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Financial Summary -->
+            <div style="display:flex;justify-content:flex-end;">
+                <div style="width:300px;background:#f8fafc;border:1px solid #e5e9f0;border-radius:8px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:0.9rem;">
+                        <span style="color:#6b7280;">Subtotal:</span>
+                        <strong style="color:#0f2044;">RM {{ number_format($order->getComputedTotal(), 2) }}</strong>
+                    </div>
+                    @if($order->creditNote)
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:0.9rem;">
+                        <span style="color:#e74c3c;">Credit Deduction:</span>
+                        <strong style="color:#e74c3c;">-RM {{ number_format($order->creditNote->amount, 2) }}</strong>
+                    </div>
+                    @endif
+                    <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #e5e9f0;font-size:1.1rem;">
+                        <strong style="color:#0f2044;">Final Amount:</strong>
+                        <strong style="color:#1d8348;">RM {{ number_format($order->final_amount ?? $order->getComputedTotal(), 2) }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approve/Reject Actions inside Modal -->
+            @if($order->status === 'Pending')
+            <div style="margin-top:24px;padding-top:24px;border-top:1px solid #f0f4f8;display:flex;flex-direction:column;gap:16px;">
+                <form action="{{ route('supplier.orders.confirm', $order) }}" method="POST" onsubmit="return validateDeliveryForm(this, 'modal_delivery_date_{{ $order->id }}', 'modal_delivery_time_{{ $order->id }}')">
+                    @csrf
+                    <input type="hidden" name="status" value="Approved">
+                    
+                    <div style="background:#f8fafc; border:1px solid #e5e9f0; border-radius:8px; padding:16px; margin-bottom:16px; text-align:left;">
+                        <h4 style="margin:0 0 12px; font-size:0.85rem; text-transform:uppercase; color:#7a8fa8; letter-spacing:0.5px;">Set Delivery Schedule</h4>
+                        <div style="font-size:0.8rem; color:#9daec5; margin-bottom:12px; line-height:1.4;">
+                            Mon–Fri: 08:00–17:00 · Saturday: 08:00–12:00<br>Sunday & Public Holidays: not allowed
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.75rem;">Delivery Date <span style="color:#e74c3c;">*</span></label>
+                                <input type="date" name="delivery_date" class="form-input" id="modal_delivery_date_{{ $order->id }}" min="{{ now()->addDay()->toDateString() }}" required onchange="validateDeliveryDate(this, 'modal_delivery_time_{{ $order->id }}')" style="width:100%;">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.75rem;">Delivery Time</label>
+                                <input type="time" name="delivery_time" class="form-input" id="modal_delivery_time_{{ $order->id }}" min="08:00" max="17:00" onchange="validateDeliveryTime(this, 'modal_delivery_date_{{ $order->id }}')" style="width:100%;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label class="form-label" style="font-size:0.75rem;">Delivery Notes / Comments</label>
+                            <textarea name="notes" class="form-input" rows="2" placeholder="Optional notes for the delivery..." style="width:100%; resize:vertical;"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:0.95rem;">Approve Purchase Order</button>
+                </form>
+
+                <form action="{{ route('supplier.orders.confirm', $order) }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="status" value="Rejected">
+                    <button type="submit" class="btn" style="width:100%;justify-content:center;background:#fdedec;color:#c0392b;border:1px solid #f5b7b1;padding:12px;font-size:0.95rem;">Reject Order</button>
+                </form>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ── PO Set Delivery Modal ── --}}
+@if(in_array($order->status, ['Pending', 'Approved']) && !$order->delivery)
+<div id="deliveryModal-{{ $order->id }}" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:14px;width:100%;max-width:450px;box-shadow:0 24px 64px rgba(0,0,0,0.22);animation:modalIn 0.2s ease;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #f0f4f8;">
+            <div style="font-size:1.1rem;font-weight:800;color:#0D1B2A;">Set Delivery Schedule</div>
+            <button style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#9ca3af;line-height:1;padding:2px 6px;border-radius:4px;" onclick="closeDeliveryModal({{ $order->id }})">✕</button>
+        </div>
+        
+        <form action="{{ route('supplier.orders.delivery', $order) }}" method="POST" onsubmit="return validateDeliveryForm(this, 'dash_modal_delivery_date_{{ $order->id }}', 'dash_modal_delivery_time_{{ $order->id }}')">
+            @csrf
+            <div style="padding:20px 24px;">
+                <p style="font-size:0.85rem;color:#6b7280;margin:0 0 16px;">Set the delivery date and time for PO <strong>#{{ $order->po_number }}</strong>.</p>
+                <div style="font-size:0.8rem;color:#9daec5;margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e5e9f0;">
+                    Mon–Fri: 08:00–17:00 · Saturday: 08:00–12:00<br>Sunday & Public Holidays: not allowed
+                </div>
+
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-size:0.85rem;font-weight:600;margin-bottom:6px;display:block;">Delivery Date</label>
+                    <input type="date" name="delivery_date" class="form-input" id="dash_modal_delivery_date_{{ $order->id }}" min="{{ now()->addDay()->toDateString() }}" required onchange="validateDeliveryDate(this, 'dash_modal_delivery_time_{{ $order->id }}')" style="width:100%;padding:10px;border:1px solid #d1dce8;border-radius:6px;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-size:0.85rem;font-weight:600;margin-bottom:6px;display:block;">Delivery Time</label>
+                    <input type="time" name="delivery_time" class="form-input" id="dash_modal_delivery_time_{{ $order->id }}" min="08:00" max="17:00" onchange="validateDeliveryTime(this, 'dash_modal_delivery_date_{{ $order->id }}')" style="width:100%;padding:10px;border:1px solid #d1dce8;border-radius:6px;">
+                </div>
+            </div>
+            <div style="padding:16px 24px;border-top:1px solid #f0f4f8;display:flex;gap:10px;background:#fafbfc;">
+                <button type="button" class="btn btn-cancel" style="flex:1;justify-content:center;padding:10px;" onclick="closeDeliveryModal({{ $order->id }})">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:2;justify-content:center;padding:10px;">Save Delivery</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+@endforeach
 
 {{-- ── Approve Return Request Modal ── --}}
 <div id="approvalModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:20px;">
@@ -368,7 +469,9 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     <label style="font-size:.78rem;font-weight:700;color:#374151;letter-spacing:.3px;text-transform:uppercase;" for="credit_amount">Credit Amount (RM)</label>
-                    <input type="number" step="0.01" min="0" style="width:100%;border:1.5px solid #e5e9f0;border-radius:8px;padding:10px 14px;font-size:.88rem;font-family:'Inter',sans-serif;color:#0D1B2A;outline:none;background:#fafbfc;" id="credit_amount" name="credit_amount" placeholder="0.00" required>
+                    <input type="text" style="width:100%;border:1.5px solid #e5e9f0;border-radius:8px;padding:10px 14px;font-size:.88rem;font-family:'Inter',sans-serif;color:#0D1B2A;outline:none;background:#f3f4f6;" id="credit_amount_display" disabled placeholder="0.00">
+                    <input type="hidden" id="credit_amount" name="credit_amount">
+                    <p style="font-size:0.75rem; color:#6b7280; margin-top:4px;">To adjust credit amounts per line item, go to the <a href="{{ route('supplier.returns.index') }}" style="color:#4a90d9;text-decoration:none;">Return Requests page</a>.</p>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     <label style="font-size:.78rem;font-weight:700;color:#374151;letter-spacing:.3px;text-transform:uppercase;" for="reason">Reason / Note</label>
@@ -390,14 +493,18 @@
 </style>
 
 <script>
-function toggleApproval(id) {
-    const row = document.getElementById('approval-' + id);
-    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+function openReviewModal(id) {
+    document.getElementById('reviewModal-' + id).style.display = 'flex';
+}
+function closeReviewModal(id) {
+    document.getElementById('reviewModal-' + id).style.display = 'none';
 }
 
-function toggleDelivery(id) {
-    const row = document.getElementById('delivery-' + id);
-    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+function openDeliveryModal(id) {
+    document.getElementById('deliveryModal-' + id).style.display = 'flex';
+}
+function closeDeliveryModal(id) {
+    document.getElementById('deliveryModal-' + id).style.display = 'none';
 }
 
 function validateDeliveryDate(dateInput, timeInputId) {
@@ -537,6 +644,7 @@ function openApprovalModal(rrId, rrNumber, qty, itemName, suggestedCredit) {
     document.getElementById('modalRRDetail').textContent = itemName ? itemName + ' · ' + qty + ' unit(s)' : qty + ' unit(s)';
     document.getElementById('approvalForm').action = '/supplier/return-requests/' + rrId + '/status';
     document.getElementById('credit_amount').value = suggestedCredit || '';
+    document.getElementById('credit_amount_display').value = suggestedCredit ? 'RM ' + suggestedCredit : '';
     document.getElementById('reason').value = '';
     document.getElementById('approvalModal').classList.add('open');
     document.body.style.overflow = 'hidden';

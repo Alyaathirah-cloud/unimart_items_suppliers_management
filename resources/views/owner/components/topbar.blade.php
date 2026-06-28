@@ -25,21 +25,7 @@
     <div class="breadcrumbs">{{ $breadcrumb ?? 'Dashboard' }}</div>
     <div class="topbar-right">
         <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-        <div class="topbar-profile" onclick="toggleProfileDropdown()">
-            <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            <div>
-                <div class="topbar-profile-name">{{ auth()->user()->name }}</div>
-                <div class="topbar-profile-role">Owner</div>
-            </div>
-            <div class="profile-dropdown" id="profileDropdown">
-                <a href="{{ route('owner.profile.edit') }}" class="dropdown-item">👤 My Profile</a>
-                <a href="{{ route('owner.password.change') }}" class="dropdown-item">🔐 Change Password</a>
-                <form action="{{ route('logout') }}" method="POST" style="display:contents;">
-                    @csrf
-                    <button type="submit" class="dropdown-item logout" style="border:none;background:none;width:100%;text-align:left;cursor:pointer;">🚪 Logout</button>
-                </form>
-            </div>
-        </div>
+        @include('owner.components.topbar-profile')
     </div>
 </div>
 
@@ -52,7 +38,7 @@ function toggleProfileDropdown() {
 document.addEventListener('click', function(event) {
     const profile = event.target.closest('.topbar-profile');
     const dropdown = document.getElementById('profileDropdown');
-    if (!profile && !dropdown.contains(event.target)) {
+    if (!profile && dropdown && !dropdown.contains(event.target)) {
         dropdown.classList.remove('show');
     }
 });

@@ -18,6 +18,7 @@ class ReturnRequestLine extends Model
         'approved_subtotal',
         'uom',
         'reason',
+        'damage_remark',
         'unit_price',
         'subtotal',
     ];

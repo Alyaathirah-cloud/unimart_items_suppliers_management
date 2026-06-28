@@ -72,7 +72,7 @@ class InvoiceController extends Controller
             'supplier_id' => $request->supplier_id,
             'invoice_date' => $request->invoice_date,
             'payment_due_date' => $request->payment_due_date ?? now()->addDays(30)->toDateString(),
-            'status' => 'Active',
+            'status' => 'Unpaid',
             'source' => 'manual',
             'total_amount' => 0,
         ]);
@@ -127,7 +127,14 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['lines.item', 'supplier', 'purchaseOrder.item', 'returnRequests.lines.item', 'creditNotes.returnRequest.item']);
+        $invoice->load([
+            'lines.item',
+            'supplier',
+            'purchaseOrder.item',
+            'purchaseOrder.orderItems.item',
+            'returnRequests.lines.item',
+            'creditNotes.returnRequest.lines.item',
+        ]);
         return view('owner.invoices.show', compact('invoice'));
     }
 
@@ -165,8 +172,48 @@ class InvoiceController extends Controller
 
     public function markPaid(Invoice $invoice)
     {
-        $invoice->update(['status' => 'paid']);
+        $invoice->update(['status' => 'Paid']);
         return redirect()->route('owner.invoices.show', $invoice)
-            ->with('success', 'Invoice marked as paid. It is now locked.');
+            ->with('success', 'Invoice marked as Paid. It is now locked.');
+    }
+
+    /**
+     * Save the owner's Est. Sold overrides for the Stock Performance panel.
+     * Accepts a JSON map of {item_id: est_sold_qty} via the estimates[] input.
+     */
+    public function saveEstimates(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'estimates'   => 'required|array',
+            'estimates.*' => 'integer|min:0',
+        ]);
+
+        $po        = $invoice->purchaseOrder;
+        $estimates = $request->estimates;
+
+        if ($po) {
+            // Build a delivered-qty map keyed by item_id for capping
+            $deliveredMap = [];
+
+            // Multi-item PO (new style): use orderItems relationship
+            if ($po->orderItems()->exists()) {
+                foreach ($po->orderItems as $poItem) {
+                    $deliveredMap[$poItem->item_id] = (int) $poItem->quantity;
+                }
+            } elseif ($po->item_id) {
+                // Legacy single-item PO
+                $deliveredMap[$po->item_id] = (int) $po->quantity;
+            }
+
+            // Cap each estimate at the delivered quantity for that item
+            foreach ($estimates as $itemId => $soldQty) {
+                $cap = $deliveredMap[$itemId] ?? PHP_INT_MAX;
+                $estimates[$itemId] = min((int) $soldQty, $cap);
+            }
+        }
+
+        $invoice->update(['sold_estimates' => $estimates]);
+
+        return back()->with('success', 'Stock estimates saved successfully.');
     }
 }

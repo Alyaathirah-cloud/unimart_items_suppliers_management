@@ -12,9 +12,9 @@
         body { font-family: 'Inter', sans-serif; background: #eef2f7; display: flex; min-height: 100vh; }
 
         /* ── Sidebar ── */
-        .sidebar { width: 210px; flex-shrink: 0; background: #0D1B2A; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px; position: fixed; top: 0; left: 0; height: 100vh; z-index: 50; }
+        .sidebar { width: 210px; flex-shrink: 0; background: #0f2044; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px; position: fixed; top: 0; left: 0; height: 100vh; z-index: 50; }
         .sidebar-brand { padding: 20px 20px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 10px; }
-        .brand-sq { width: 32px; height: 32px; background: #fff; color: #0D1B2A; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: .9rem; font-weight: 800; flex-shrink: 0; }
+        .brand-sq { width: 32px; height: 32px; background: #fff; color: #0f2044; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: .9rem; font-weight: 800; flex-shrink: 0; }
         .brand-name { font-size: .9rem; font-weight: 800; }
         .brand-sub  { font-size: .68rem; color: #6b84a3; }
         .sidebar-nav { flex: 1; }
@@ -23,15 +23,15 @@
         .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #10b981; font-weight: 700; }
         .nav-icon { width: 18px; text-align: center; flex-shrink: 0; }
         .sidebar-bottom { padding: 16px 20px 0; border-top: 1px solid rgba(255,255,255,0.07); margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-        .btn-logout { background: rgba(220,53,69,.15); color: #f87171; border: 1px solid rgba(220,53,69,.3); border-radius: 7px; padding: 10px 14px; font-size: .82rem; font-weight: 600; cursor: pointer; width: 100%; font-family: 'Inter', sans-serif; transition: all .15s; }
-        .btn-logout:hover { background: rgba(220,53,69,.25); }
+        .btn-report { background: #1e3a6e; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s; }
+        .btn-report:hover { background: #2a4f8f; }
 
         /* ── Layout ── */
         .main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
         .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
         .topbar-label { font-size: .9rem; font-weight: 700; color: #0D1B2A; }
-        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #0D1B2A; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85rem; font-weight: 700; flex-shrink: 0; }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85rem; font-weight: 700; flex-shrink: 0; }
         .topbar-name { font-size: .85rem; font-weight: 600; color: #1a2744; }
         .topbar-logout { background: none; border: none; font-size: .72rem; color: #9daec5; cursor: pointer; font-family: inherit; padding: 0; }
 
@@ -49,29 +49,26 @@
         /* ── Filter bar ── */
         .filter-bar { background: #fff; border-radius: 12px; padding: 14px 20px; box-shadow: 0 1px 6px rgba(15,32,68,0.07); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .filter-select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; font-size: .85rem; font-family: 'Inter', sans-serif; color: #3a4d6a; background: #f8fafc; outline: none; cursor: pointer; }
-        .filter-select:focus { border-color: #0D1B2A; }
-        .filter-btn { background: #0D1B2A; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: background .15s; }
+        .filter-select:focus { border-color: #0f2044; }
+        .filter-btn { background: #0f2044; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: .85rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: background .15s; }
         .filter-btn:hover { background: #1e3a5f; }
         .filter-clear { background: #fff; color: #7a8fa8; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 18px; font-size: .85rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; text-decoration: none; transition: all .15s; }
         .filter-clear:hover { border-color: #94a3b8; color: #374151; }
 
         /* ── Table card ── */
         .table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(15,32,68,0.07); overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         thead tr { background: #f8fafc; border-bottom: 2px solid #eef2f7; }
-        thead th { padding: 13px 16px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #7a8fa8; text-align: left; white-space: nowrap; }
+        thead th { padding: 16px 24px; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9daec5; text-align: left; white-space: nowrap; }
         tbody tr { border-bottom: 1px solid #f4f6fb; transition: background .12s; }
         tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: #f8fafc; }
-        tbody td { padding: 13px 16px; font-size: .86rem; color: #3a4d6a; vertical-align: middle; }
+        tbody tr:hover { background: #f8fafd; }
+        tbody td { padding: 20px 24px; font-size: .85rem; color: #1a2744; vertical-align: middle; }
 
         /* ── Cell styles ── */
-        .rr-number { font-size: .78rem; font-weight: 700; color: #3b82f6; font-family: monospace; text-decoration: none; }
-        .rr-number:hover { text-decoration: underline; }
-        .item-name { font-weight: 600; color: #0D1B2A; }
-        .item-cat  { font-size: .72rem; color: #9daec5; margin-top: 2px; }
         .cn-id  { font-size: .72rem; font-weight: 700; color: #3b82f6; font-family: monospace; text-decoration: none; }
         .cn-id:hover { text-decoration: underline; }
+        .cn-amt { font-size: .72rem; color: #16a34a; font-weight: 600; }
         .cn-amt { font-size: .72rem; color: #16a34a; font-weight: 600; }
 
         /* ── Badges ── */
@@ -87,19 +84,27 @@
 
         /* ── Action buttons ── */
         .action-row { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
-        .btn-approve { background: #0D1B2A; color: #fff; border: none; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: background .15s; }
-        .btn-approve:hover { background: #1e3a5f; }
-        .btn-reject  { background: #fff; color: #c0392b; border: 1px solid #f5b7b1; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; }
-        .btn-reject:hover { background: #fdedec; }
-        .btn-download { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; }
+        
+        .btn-action-view { background: #fff; color: #3a4d6a; border: 1px solid #d1dce8; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-action-view:hover { background: #f8fafc; border-color: #0f2044; color: #0f2044; }
+        
+        .btn-approve { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-approve:hover { background: #dcfce7; }
+        
+        .btn-reject  { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-reject:hover { background: #fee2e2; }
+        
+        .btn-download { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 7px; padding: 7px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
         .btn-download:hover { background: #dcfce7; }
 
         /* ── Table footer ── */
         .table-footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid #f0f4f8; flex-wrap: wrap; gap: 12px; }
-        .footer-info { font-size: .8rem; color: #7a8fa8; }
-        .page-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #3a4d6a; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: .85rem; text-decoration: none; transition: all .12s; }
-        .page-btn:hover { background: #0D1B2A; color: #fff; border-color: #0D1B2A; }
-        .page-btn.disabled { opacity: .4; pointer-events: none; }
+        .pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-top: 1px solid #f0f4f8; font-size: .82rem; color: #7a8fa8; flex-wrap: wrap; gap: 12px; width: 100%; }
+        .pagination-links { display: flex; align-items: center; gap: 4px; }
+        .page-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #3a4d6a; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: .85rem; text-decoration: none; transition: all .12s; font-weight: 600; }
+        .page-btn:hover { background: #f4f6fb; }
+        .page-btn.active { background: #0f2044; color: #fff; border-color: #0f2044; }
+        .page-btn.disabled { color: #c0cfe0; cursor: not-allowed; pointer-events: none; opacity: 1; }
 
         /* ── Empty state ── */
         .empty-state { padding: 60px 20px; text-align: center; color: #9daec5; }
@@ -139,14 +144,8 @@
 <div class="main">
     <div class="topbar">
         <div class="topbar-label">Return Requests</div>
-        <div class="topbar-right">
-            <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            <div>
-                <div class="topbar-name">{{ auth()->user()->name }}</div>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf
-                    <button type="submit" class="topbar-logout">Logout</button>
-                </form>
-            </div>
+        <div class="topbar-right" style="margin-left: auto; display: flex; align-items: center; gap: 20px;">
+            @include('supplier.components.topbar-profile')
         </div>
     </div>
 
@@ -190,70 +189,36 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Request ID</th>
-                        <th>Items</th>
-                        <th>Qty</th>
-                        <th>Date</th>
-                        <th>Reason</th>
-                        <th>Credit Note</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th style="width: 180px;">Request ID</th>
+                        <th style="width: 35%;">Items</th>
+                        <th style="width: 130px;">Created At</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 220px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                 @forelse($returns as $rr)
                     <tr>
                         {{-- Request ID --}}
-                        <td><span class="rr-number">#{{ $rr->return_number }}</span></td>
+                        <td><span style="font-size: .82rem; font-weight: 600; color: #3a4d6a; font-family: monospace;">#{{ $rr->return_number }}</span></td>
 
                         {{-- Items --}}
                         <td>
                             @php
                                 $itemNames = $rr->lines->pluck('item.name')->filter()->unique();
-                                $firstName = $itemNames->first() ?? optional($rr->item)->name ?? 'N/A';
-                                $returnLines = $rr->lines->map(function($line) {
-                                    return [
-                                        'id' => $line->id,
-                                        'name' => optional($line->item)->name ?? 'Unknown Item',
-                                        'reason' => $line->reason,
-                                        'quantity' => $line->quantity,
-                                        'unit_price' => number_format($line->unit_price, 2, '.', ''),
-                                        'subtotal' => number_format($line->subtotal, 2, '.', ''),
-                                    ];
-                                });
+                                $firstName = $itemNames->first() ?? optional($rr->item)->name ?? 'Unknown Item';
+                                $itemCount = $itemNames->count();
                             @endphp
-                            <div class="item-name">{{ $firstName }}</div>
-                            <div class="item-cat">{{ $rr->lines->count() > 1 ? $rr->lines->count() . ' returned items' : (optional($rr->item)->category ?? '—') }}</div>
+                            <div style="font-weight: 600; color: #0D1B2A; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                {{ $firstName }}
+                                @if($itemCount > 1)
+                                    <span style="color: #7a8fa8; font-size: .8rem; font-weight: 500;">, +{{ $itemCount - 1 }} more</span>
+                                @endif
+                            </div>
                         </td>
 
-                        {{-- Qty --}}
-                        <td>{{ number_format($rr->lines->sum('quantity')) }}</td>
-
-                        {{-- Date --}}
-                        <td style="color:#7a8fa8;white-space:nowrap;">{{ $rr->created_at->format('M d, Y') }}</td>
-
-                        {{-- Reason badge --}}
-                        <td>
-                            @if($rr->reason === 'Expired')
-                                <span class="badge badge-expired">Expired</span>
-                            @elseif($rr->reason === 'Damaged')
-                                <span class="badge badge-damaged">Damaged</span>
-                            @elseif($rr->reason === 'Wrong Item')
-                                <span class="badge badge-wrong-item">Wrong Item</span>
-                            @else
-                                <span class="badge badge-other">{{ $rr->reason ?? 'Other' }}</span>
-                            @endif
-                        </td>
-
-                        {{-- Credit Note --}}
-                        <td>
-                            @if($rr->creditNote)
-                                <div><span class="cn-id">{{ $rr->creditNote->credit_note_id }}</span></div>
-                                <div><span class="cn-amt">+RM {{ number_format($rr->creditNote->amount, 2) }}</span></div>
-                            @else
-                                <span style="color:#c5cedb;font-size:.8rem;">—</span>
-                            @endif
-                        </td>
+                        {{-- Created At --}}
+                        <td style="color:#7a8fa8;">{{ $rr->created_at->format('M d, Y') }}</td>
 
                         {{-- Status --}}
                         <td>
@@ -269,21 +234,40 @@
                         {{-- Action --}}
                         <td>
                             @if($rr->status === 'Pending')
+                                @php
+                                    $itemNames = $rr->lines->pluck('item.name')->filter()->unique();
+                                    $returnLines = $rr->lines->map(function($line) {
+                                        return [
+                                            'id' => $line->id,
+                                            'name' => optional($line->item)->name ?? 'Unknown Item',
+                                            'reason' => $line->reason,
+                                            'quantity' => $line->quantity,
+                                            'unit_price' => number_format($line->unit_price, 2, '.', ''),
+                                            'subtotal' => number_format($line->subtotal, 2, '.', ''),
+                                        ];
+                                    });
+                                @endphp
                                 <div class="action-row">
-                                    <button class="btn-approve"
-                                        onclick="openApprovalModal({{ $rr->id }}, '{{ $rr->return_number }}', {{ $rr->lines->sum('quantity') }}, '{{ addslashes($rr->lines->pluck('item.name')->filter()->join(', ')) }}', {{ number_format($rr->credit_amount, 2, '.', '') }}, this)"
+                                    <button type="button" class="btn-action-view" onclick="openApprovalModal({{ $rr->id }}, '{{ $rr->return_number }}', {{ $rr->lines->sum('quantity') }}, '{{ addslashes($itemNames->join(', ')) }}', {{ number_format($rr->credit_amount, 2, '.', '') }}, this)" data-return-lines="{{ $returnLines->toJson() }}">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        View
+                                    </button>
+                                    <button type="button" class="btn-approve"
+                                        onclick="openApprovalModal({{ $rr->id }}, '{{ $rr->return_number }}', {{ $rr->lines->sum('quantity') }}, '{{ addslashes($itemNames->join(', ')) }}', {{ number_format($rr->credit_amount, 2, '.', '') }}, this)"
                                         data-return-lines="{{ $returnLines->toJson() }}">
-                                        ✔ Approve
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Approve
                                     </button>
                                     <form action="{{ route('supplier.returns.status', $rr) }}" method="POST" style="display:inline;">
                                         @csrf
                                         <input type="hidden" name="rejection_reason" value="">
-                                        <button name="status" value="Rejected" class="btn-reject" onclick="return promptRejectReason(this.form)">Reject</button>
+                                        <button name="status" value="Rejected" class="btn-reject" onclick="return promptRejectReason(this.form)">
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject
+                                        </button>
                                     </form>
                                 </div>
                             @elseif(in_array($rr->status, ['Approved', 'Credit Applied']) && $rr->creditNote)
-                                <a href="{{ route('supplier.credit-notes.export-single-pdf', $rr->creditNote) }}" class="btn-download" style="text-decoration:none;display:inline-block;">
-                                    ⬇ Download
+                                <a href="{{ route('supplier.credit-notes.export-single-pdf', $rr->creditNote) }}" class="btn-download" style="text-decoration:none;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download
                                 </a>
                             @else
                                 <span style="color:#9daec5;font-size:.8rem;">Actioned</span>
@@ -291,7 +275,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8">
+                    <tr><td colspan="5">
                         <div class="empty-state">
                             <div class="empty-icon">↩</div>
                             <div class="empty-text">No return requests found</div>
@@ -301,20 +285,18 @@
                 </tbody>
             </table>
 
-            <div class="table-footer">
-                <div class="footer-info">Showing {{ $returns->firstItem() ?? 0 }}–{{ $returns->lastItem() ?? 0 }} of {{ $returns->total() }}</div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    @if($returns->onFirstPage())
-                        <span class="page-btn disabled">‹</span>
-                    @else
-                        <a class="page-btn" href="{{ $returns->previousPageUrl() }}">‹</a>
-                    @endif
-                    <span style="font-size:.8rem;color:#7a8fa8;">Page {{ $returns->currentPage() }} / {{ $returns->lastPage() }}</span>
-                    @if($returns->hasMorePages())
-                        <a class="page-btn" href="{{ $returns->nextPageUrl() }}">›</a>
-                    @else
-                        <span class="page-btn disabled">›</span>
-                    @endif
+            <div class="pagination-bar">
+                <span>Showing {{ $returns->firstItem() ?? 0 }} to {{ $returns->lastItem() ?? 0 }} of {{ number_format($returns->total()) }} entries</span>
+                <div class="pagination-links">
+                    <a href="{{ $returns->previousPageUrl() ?? '#' }}" class="page-btn {{ $returns->onFirstPage() ? 'disabled' : '' }}">‹</a>
+                    @foreach($returns->getUrlRange(1, $returns->lastPage()) as $page => $url)
+                        @if($page <= 3 || $page > $returns->lastPage() - 1 || abs($page - $returns->currentPage()) <= 1)
+                            <a href="{{ $url }}" class="page-btn {{ $page == $returns->currentPage() ? 'active' : '' }}">{{ $page }}</a>
+                        @elseif($page == 4 && $returns->currentPage() > 5)
+                            <span class="page-btn disabled">…</span>
+                        @endif
+                    @endforeach
+                    <a href="{{ $returns->nextPageUrl() ?? '#' }}" class="page-btn {{ !$returns->hasMorePages() ? 'disabled' : '' }}">›</a>
                 </div>
             </div>
         </div>

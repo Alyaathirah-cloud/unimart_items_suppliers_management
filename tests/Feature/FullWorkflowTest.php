@@ -78,7 +78,9 @@ class FullWorkflowTest extends TestCase
 
         // Supplier logs in and approves the order with delivery date
         $supplierUser = $supplier->user;
-        $this->actingAs($supplierUser);
+        $supplierUser->must_change_password = false;
+        $supplierUser->save();
+        $this->actingAs($supplierUser, 'supplier');
 
         $confirmResponse = $this->post("/supplier/purchase-orders/{$purchaseOrder->id}/confirm", [
             'status' => 'Approved',
@@ -108,6 +110,11 @@ class FullWorkflowTest extends TestCase
         $invoicePdfResponse->assertStatus(200);
         $invoicePdfResponse->assertHeader('Content-Type', 'application/pdf');
 
+        // Flag the item as damaged first so it passes return validation
+        $item->is_damaged = true;
+        $item->damaged_quantity = 2;
+        $item->save();
+
         // Create a return request against the approved purchase order
         $returnResponse = $this->post('/owner/return-requests', [
             'item_id' => $item->id,
@@ -123,7 +130,7 @@ class FullWorkflowTest extends TestCase
         $this->assertEquals('Pending', $returnRequest->status);
 
         // Supplier approves the return request and credit note should be generated
-        $this->actingAs($supplierUser);
+        $this->actingAs($supplierUser, 'supplier');
         $approveResponse = $this->post("/supplier/return-requests/{$returnRequest->id}/status", [
             'status' => 'Approved',
         ]);
@@ -242,13 +249,17 @@ class FullWorkflowTest extends TestCase
             'items' => [
                 [
                     'invoice_line_id' => $invoiceLine->id,
-                    'quantity' => 3,
-                    'reason' => 'damaged',
+                    'invoice_id'      => $invoice->id,
+                    'quantity'        => 3,
+                    'reason'          => 'damaged',
+                    'damage_remark'   => 'Damaged packaging',
                 ],
             ],
         ]);
 
-        $response->assertRedirect(route('owner.return-requests.index'));
+        $returnRequest = ReturnRequest::where('invoice_id', $invoice->id)->first();
+        $this->assertNotNull($returnRequest);
+        $response->assertRedirect(route('owner.return-requests.show', $returnRequest));
         $response->assertSessionHas('success');
 
         $item->refresh();
@@ -328,7 +339,7 @@ class FullWorkflowTest extends TestCase
         $this->assertTrue($supplier->portal_enabled);
         $this->assertNotNull($supplier->user_id);
         $this->assertNotNull($supplier->temporary_password);
-        $this->assertEquals(url('/login'), $supplier->portal_link);
+        $this->assertEquals(route('supplier.login'), $supplier->portal_link);
         $this->assertEquals('sent', $supplier->invite_email_status);
         $this->assertEquals('missing', $supplier->invite_whatsapp_status);
 
@@ -361,5 +372,61 @@ class FullWorkflowTest extends TestCase
         $this->assertFalse((bool) $supplier->portal_enabled);
         $this->assertNull($supplier->user_id);
         $this->assertNull(User::where('email', 'disabled@example.com')->first());
+    }
+
+    public function test_owner_can_manually_trigger_purchase_order_email_notification()
+    {
+        Mail::fake();
+
+        $owner = User::factory()->create([
+            'role' => 'owner',
+            'email' => 'owner-email-test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $this->actingAs($owner);
+
+        $supplier = Supplier::create([
+            'name' => 'Mail Test Supplier',
+            'contact_email' => 'supplier-mail@example.com',
+            'contact_phone' => '0123456789',
+            'portal_enabled' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'Mail Test Item',
+            'category' => 'General',
+            'quantity' => 10,
+            'expiry_date' => now()->addDays(30)->toDateString(),
+            'supplier_id' => $supplier->id,
+            'reorder_point' => 5,
+            'unit_price' => 4.00,
+            'uom' => 'unit',
+        ]);
+
+        $purchaseOrder = PurchaseOrder::create([
+            'po_number' => 'PO-MAIL-001',
+            'item_id' => $item->id,
+            'quantity' => 10,
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'status' => 'Pending',
+            'unit_price' => 4.00,
+            'total_amount' => 40.00,
+            'final_amount' => 40.00,
+        ]);
+
+        $response = $this->post(route('owner.email.notify-po-request', $purchaseOrder));
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'message' => 'Email notification sent to supplier successfully.',
+        ]);
+
+        Mail::assertQueued(\App\Mail\PurchaseOrderCreatedToSupplier::class, function ($mail) use ($supplier) {
+            return $mail->hasTo($supplier->contact_email) &&
+                   $mail->poNumber === 'PO-MAIL-001';
+        });
     }
 }

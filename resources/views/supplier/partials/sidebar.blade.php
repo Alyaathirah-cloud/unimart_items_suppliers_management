@@ -1,7 +1,9 @@
 <aside class="sidebar">
     <div class="sidebar-brand">
         <div class="brand-name">22UNIMART</div>
-        <div class="brand-sub">Supplier Portal</div>
+        @if(empty($hideBrandSub))
+            <div class="brand-sub">Supplier Portal</div>
+        @endif
     </div>
     <nav class="sidebar-nav">
         <a href="{{ route('supplier.dashboard') }}" class="nav-item {{ ($active ?? '') === 'dashboard' ? 'active' : '' }}">

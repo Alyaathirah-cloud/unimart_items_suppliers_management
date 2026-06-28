@@ -240,12 +240,34 @@
                 @enderror
             </div>
 
+            <!-- Role Selection -->
+            <div class="field">
+                <label for="role">Select Role</label>
+                <div class="input-wrap">
+                    <span class="input-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </span>
+                    <select id="role" name="role" required style="flex: 1; border: none; outline: none; font-family: 'Inter', sans-serif; font-size: 0.95rem; color: #1a2744; background: transparent; -webkit-appearance: none; -moz-appearance: none; appearance: none; cursor: pointer;">
+                        <option value="" disabled selected>Choose your role...</option>
+                        <option value="owner" {{ old('role') == 'owner' ? 'selected' : '' }}>Owner</option>
+                        <option value="staff" {{ old('role') == 'staff' ? 'selected' : '' }}>Staff</option>
+                        <option value="supplier" {{ old('role') == 'supplier' ? 'selected' : '' }}>Supplier</option>
+                    </select>
+                </div>
+                @error('role')
+                    <div class="error-msg">{{ $message }}</div>
+                @enderror
+            </div>
+
             <!-- Email -->
             <div class="field">
                 <label for="email">Email or Username</label>
                 <div class="input-wrap">
                     <span class="input-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
                     </span>
                     <input type="email" id="email" name="email" value="{{ old('email') }}"
                            placeholder="john@example.com" required autocomplete="email">
@@ -254,7 +276,6 @@
                     <div class="error-msg">{{ $message }}</div>
                 @enderror
             </div>
-
             <!-- Password -->
             <div class="field">
                 <label for="password">Password</label>

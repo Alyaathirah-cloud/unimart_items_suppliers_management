@@ -15,7 +15,12 @@ class CreditNoteController extends Controller
 
     public function index(Request $request)
     {
-        $query = CreditNote::with(['supplier', 'returnRequest.item']);
+        // Automatically expire unused credit notes older than 60 days
+        \App\Models\CreditNote::where('status', 'Unused')
+            ->whereRaw('DATE_ADD(issue_date, INTERVAL 60 DAY) < NOW()')
+            ->update(['status' => 'Expired']);
+
+        $query = CreditNote::with(['supplier', 'returnRequest.lines.item']);
 
         // Search by credit_note_id or supplier name
         if ($request->filled('search')) {
@@ -46,13 +51,13 @@ class CreditNoteController extends Controller
 
     public function show(CreditNote $creditNote)
     {
-        $creditNote->load(['supplier', 'returnRequest.item']);
+        $creditNote->load(['supplier', 'returnRequest.lines.item']);
         return view('owner.credit_notes.show', compact('creditNote'));
     }
 
     public function exportPdf(Request $request)
     {
-        $query = CreditNote::with(['supplier', 'returnRequest.item']);
+        $query = CreditNote::with(['supplier', 'returnRequest.lines.item']);
 
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
@@ -73,7 +78,7 @@ class CreditNoteController extends Controller
 
     public function exportSinglePdf(CreditNote $creditNote)
     {
-        $creditNote->load(['supplier', 'returnRequest.item', 'purchaseOrder']);
+        $creditNote->load(['supplier', 'returnRequest.lines.item', 'purchaseOrder']);
 
         $filename = 'credit-note-' . $creditNote->credit_note_id . '.pdf';
 

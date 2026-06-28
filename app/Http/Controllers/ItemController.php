@@ -13,6 +13,7 @@ class ItemController extends Controller
     public function __construct()
     {
         $this->middleware(['auth', 'role:owner']);
+        $this->middleware('role.owner')->only('destroy');
     }
 
     public function index(Request $request)

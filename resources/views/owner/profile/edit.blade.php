@@ -72,7 +72,7 @@
         <div class="avatar-card">
             <div class="avatar-large">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
             <div class="avatar-name">{{ auth()->user()->name }}</div>
-            <div class="avatar-role">Owner</div>
+            <div class="avatar-role">{{ ucfirst(auth()->user()->role) }}</div>
             <div class="avatar-email">{{ auth()->user()->email }}</div>
             <div class="avatar-divider"></div>
             <div class="avatar-meta">
@@ -109,7 +109,7 @@
 
                     <div class="form-group">
                         <label class="form-label" for="role">Role</label>
-                        <input type="text" id="role" class="form-control" value="Owner" disabled>
+                        <input type="text" id="role" class="form-control" value="{{ ucfirst(auth()->user()->role) }}" disabled>
                         <div class="form-hint">Read-only — system assigned</div>
                     </div>
 
@@ -125,6 +125,24 @@
                         <input type="text" id="phone" name="phone" class="form-control" placeholder="+601X-XXXXXXX"
                                value="{{ old('phone', $owner->phone) }}">
                         @error('phone')<div class="error-msg">{{ $message }}</div>@enderror
+                    </div>
+
+                    {{-- WhatsApp Number for automated alerts --}}
+                    <div class="form-group full">
+                        <label class="form-label" for="whatsapp_number">
+                            📱 WhatsApp Number <span style="font-weight:400;text-transform:none;letter-spacing:0;">(for alerts)</span>
+                        </label>
+                        <input type="text" id="whatsapp_number" name="whatsapp_number" class="form-control"
+                               placeholder="+60123456789"
+                               value="{{ old('whatsapp_number', $owner->whatsapp_number) }}">
+                        @error('whatsapp_number')<div class="error-msg">{{ $message }}</div>@enderror
+                        {{-- Sandbox reminder --}}
+                        <div style="margin-top:8px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:0.78rem;color:#856404;line-height:1.6;">
+                            ⚠️ <strong>Sandbox notice:</strong> This number must first send
+                            <code style="background:#fff3cd;padding:1px 5px;border-radius:3px;">join &lt;your-sandbox-code&gt;</code>
+                            to <strong>+1 415 523 8886</strong> on WhatsApp before it can receive notifications
+                            (sandbox testing only).
+                        </div>
                     </div>
                 </div>
 

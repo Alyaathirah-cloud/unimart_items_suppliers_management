@@ -1,128 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Return Request {{ $returnRequest->return_number }} – 22UniMart</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Inter, sans-serif; background: #eef2f7; display: flex; min-height: 100vh; color: #1a2744; }
-        .sidebar { width: 210px; flex-shrink: 0; background: #0f2044; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px 0; position: fixed; top: 0; left: 0; height: 100vh; }
-        .sidebar-brand { padding: 20px 20px 4px; display: flex; align-items: center; gap: 12px; }
-        .brand-square { width: 32px; height: 32px; background: #fff; color: #0f2044; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; }
-        .brand-name { font-size: 0.9rem; font-weight: 800; }
-        .brand-sub { font-size: 0.68rem; color: #8ca0c0; }
-        .sidebar-nav { flex: 1; margin-top: 20px; overflow-y: auto; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; font-size: 0.88rem; font-weight: 500; color: #8ca0c0; text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
-        .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #4a90d9; }
-        .sidebar-bottom { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-report { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; }
-        .btn-report:hover { background: #a93226; }
-        .main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; }
-        .topbar { background: #fff; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; }
-        .breadcrumbs { font-size: 0.75rem; font-weight: 700; color: #7a8fa8; letter-spacing: 1px; text-transform: uppercase; }
-        .breadcrumbs a { color: inherit; text-decoration: none; }
-        .breadcrumbs a:hover { color: #0f2044; }
-        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
-        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 700; }
-        .content { padding: 40px; max-width: 960px; width: 100%; }
-        .page-title { font-size: 2rem; font-weight: 800; color: #0f2044; margin-bottom: 8px; }
-        .page-sub { font-size: 0.95rem; color: #5a6a85; line-height: 1.6; margin-bottom: 24px; max-width: 760px; }
-        .card { background: #fff; border-radius: 16px; box-shadow: 0 1px 24px rgba(15,32,68,0.08); margin-bottom: 24px; overflow: hidden; }
-        .card-body { padding: 28px; }
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Return Request {{ $returnRequest->return_number }} – 22UniMart</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Inter, sans-serif; background: #eef2f7; display: flex; min-height: 100vh; color: #1a2744; }
-        .sidebar { width: 210px; flex-shrink: 0; background: #0f2044; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px 0; position: fixed; top: 0; left: 0; height: 100vh; }
-        .sidebar-brand { padding: 20px 20px 4px; display: flex; align-items: center; gap: 12px; }
-        .brand-square { width: 32px; height: 32px; background: #fff; color: #0f2044; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; }
-        .brand-name { font-size: 0.9rem; font-weight: 800; }
-        .brand-sub { font-size: 0.68rem; color: #8ca0c0; }
-        .sidebar-nav { flex: 1; margin-top: 20px; overflow-y: auto; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; font-size: 0.88rem; font-weight: 500; color: #8ca0c0; text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
-        .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #4a90d9; }
-        .sidebar-bottom { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-report { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; }
-        .btn-report:hover { background: #a93226; }
-        .main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; }
-        .topbar { background: #fff; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; }
-        .breadcrumbs { font-size: 0.75rem; font-weight: 700; color: #7a8fa8; letter-spacing: 1px; text-transform: uppercase; }
-        .breadcrumbs a { color: inherit; text-decoration: none; }
-        .breadcrumbs a:hover { color: #0f2044; }
-        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
-        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 700; }
-        .content { padding: 40px; max-width: 960px; width: 100%; }
-        .page-title { font-size: 2rem; font-weight: 800; color: #0f2044; margin-bottom: 8px; }
-        .page-sub { font-size: 0.95rem; color: #5a6a85; line-height: 1.6; margin-bottom: 24px; max-width: 760px; }
-        .card { background: #fff; border-radius: 16px; box-shadow: 0 1px 24px rgba(15,32,68,0.08); margin-bottom: 24px; overflow: hidden; }
-        .card-body { padding: 28px; }
-        .card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; }
-        .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field-label { font-size: 0.78rem; font-weight: 700; color: #7a8fa8; text-transform: uppercase; letter-spacing: 0.6px; }
-        .field-value { font-size: 0.95rem; color: #1a2744; }
-        .badge { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-draft { background: #f4f6fb; color: #5a6a85; }
-        .badge-pending { background: #e8f4fd; color: #2980b9; }
-        .badge-approved { background: #e8f8f0; color: #1d8348; }
-        .badge-rejected { background: #fdedec; color: #c0392b; }
-        .btn-secondary { display: inline-flex; align-items: center; justify-content: center; background: #f4f6fb; color: #1a2744; border: 1px solid #d1dce8; border-radius: 10px; padding: 12px 18px; text-decoration: none; font-weight: 700; }
-        .btn-secondary:hover { background: #e8eff6; }
-    </style>
-</head>
-<body>
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-square">22</div>
-        <div>
-            <div class="brand-name">22UNIMART</div>
-            <div class="brand-sub">Inventory Control</div>
-        </div>
-    </div>
-    <nav class="sidebar-nav">
-        <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}">⊞ Dashboard</a>
-        <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}">📦 Inventory</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}">🏢 Suppliers</a>
-        <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}">🛒 Purchase Orders</a>
-        <a href="{{ route('owner.return-requests.index') }}" class="nav-item {{ request()->routeIs('owner.return-requests.*') ? 'active' : '' }}">↩ Return Requests</a>
-        <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}">📋 Credit Notes</a>
-        <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}">🔔 Notifications</a>
-    </nav>
-        <div class="sidebar-bottom">
-        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: Owner</div>
-        <form action="{{ route('logout') }}" method="POST" style="margin: 0; width: 100%;">
-            @csrf
-            <button type="submit" class="btn-report" style="background: #c0392b;">Logout</button>
-        </form>
-    </div>
-</aside>
-<div class="main">
-    <div class="topbar">
-        <div class="breadcrumbs"><a href="{{ route('owner.return-requests.index') }}">Return Requests</a> › <span style="color:#0f2044;">{{ $returnRequest->return_number }}</span></div>
-                <div class="topbar-right">
-            <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+@extends('layouts.owner')
 
-    <div class="content">
+@section('title', 'Return Request ' . $returnRequest->return_number . ' – 22UniMart')
+
+@push('styles')
+<style>
+    .content-center { max-width: 960px; width: 100%; margin: 0 auto; }
+    .page-title { font-size: 2rem; font-weight: 800; color: #0f2044; margin-bottom: 8px; }
+    .page-sub { font-size: 0.95rem; color: #5a6a85; line-height: 1.6; margin-bottom: 24px; max-width: 760px; }
+    .card { background: #fff; border-radius: 16px; box-shadow: 0 1px 24px rgba(15,32,68,0.08); margin-bottom: 24px; overflow: hidden; }
+    .card-body { padding: 28px; }
+    .card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; }
+    .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-label { font-size: 0.78rem; font-weight: 700; color: #7a8fa8; text-transform: uppercase; letter-spacing: 0.6px; }
+    .field-value { font-size: 0.95rem; color: #1a2744; }
+    .badge { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-draft { background: #f4f6fb; color: #5a6a85; }
+    .badge-pending { background: #e8f4fd; color: #2980b9; }
+    .badge-approved { background: #e8f8f0; color: #1d8348; }
+    .badge-rejected { background: #fdedec; color: #c0392b; }
+    .btn-secondary { display: inline-flex; align-items: center; justify-content: center; background: #f4f6fb; color: #1a2744; border: 1px solid #d1dce8; border-radius: 10px; padding: 12px 18px; text-decoration: none; font-weight: 700; }
+    .btn-secondary:hover { background: #e8eff6; }
+</style>
+@endpush
+
+@section('breadcrumbs')
+    <a href="{{ route('owner.return-requests.index') }}">Return Requests</a> › <span style="color:#0f2044;">{{ $returnRequest->return_number }}</span>
+@endsection
+
+@section('content')
+    <div class="content-center">
         <div class="page-title">Return Request {{ $returnRequest->return_number }}</div>
         <div class="page-sub">Review the status, item details, and credit note history for this return request.</div>
 
@@ -146,6 +53,17 @@
                     <div class="field">
                         <div class="field-label">Total Qty Requested</div>
                         <div class="field-value">{{ number_format($returnRequest->lines->sum('quantity')) }}</div>
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <div class="field-label">Total Approved Qty</div>
+                        <div class="field-value">{{ number_format($returnRequest->lines->sum('approved_qty')) }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label">Credit Note Amount</div>
+                        <div class="field-value">{{ $returnRequest->creditNote ? 'RM ' . number_format($returnRequest->creditNote->amount, 2) : '—' }}</div>
                     </div>
                 </div>
 
@@ -195,9 +113,13 @@
                         <table style="width:100%;border-collapse:collapse;">
                             <thead>
                                 <tr style="background:#f8fafc;">
-                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Item</th>
-                                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:#7a8fa8;">Reason</th>
-                                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:#7a8fa8;">Requested Qty</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Item Name</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Category</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Invoice No</th>
+                                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:#7a8fa8;">Return Qty</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Reason</th>
+                                    <th style="padding:12px 14px;text-align:left;font-size:.82rem;color:#7a8fa8;">Damage Remark</th>
+                                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:#7a8fa8;">Status</th>
                                     <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:#7a8fa8;">Unit Price</th>
                                     <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:#7a8fa8;">Subtotal</th>
                                     @if(!in_array($returnRequest->status, ['Pending', 'Draft']))
@@ -211,8 +133,28 @@
                                 @foreach($returnRequest->lines as $line)
                                     <tr style="border-bottom:1px solid #f4f6fb;">
                                         <td style="padding:12px 14px;">{{ optional($line->item)->name ?? '–' }}</td>
-                                        <td style="padding:12px 14px;text-align:right;text-transform:capitalize;">{{ $line->reason }}</td>
+                                        <td style="padding:12px 14px;text-transform:capitalize;">{{ optional($line->item)->category ?? '–' }}</td>
+                                        <td style="padding:12px 14px;">
+                                            @if($returnRequest->invoice)
+                                                <a href="{{ route('owner.invoices.show', $returnRequest->invoice) }}" style="color:#4a90d9;text-decoration:none;">{{ $returnRequest->invoice->invoice_number }}</a>
+                                            @else
+                                                {{ $returnRequest->invoice_number ?? '—' }}
+                                            @endif
+                                        </td>
                                         <td style="padding:12px 14px;text-align:right;">{{ number_format($line->quantity) }}</td>
+                                        <td style="padding:12px 14px;text-transform:capitalize;">
+                                            @if(strtolower($line->reason) === 'expired')
+                                                <span style="background:#fef3e2;color:#d4870a;border-radius:4px;padding:2px 7px;font-size:0.72rem;font-weight:700;">Expired</span>
+                                            @else
+                                                <span style="background:#fdedec;color:#c0392b;border-radius:4px;padding:2px 7px;font-size:0.72rem;font-weight:700;">Damaged</span>
+                                            @endif
+                                        </td>
+                                        <td style="padding:12px 14px;font-size:0.82rem;color:#5a6a85;max-width:200px;">
+                                            {{ $line->damage_remark ?? '—' }}
+                                        </td>
+                                        <td style="padding:12px 14px;text-align:center;">
+                                            <span class="badge badge-{{ strtolower($returnRequest->status) === 'draft' ? 'draft' : (strtolower($returnRequest->status) === 'pending' ? 'pending' : (strtolower($returnRequest->status) === 'approved' ? 'approved' : 'rejected')) }}" style="font-size:0.7rem;padding:4px 8px;">{{ $returnRequest->status }}</span>
+                                        </td>
                                         <td style="padding:12px 14px;text-align:right;">RM {{ number_format($line->unit_price, 2) }}</td>
                                         <td style="padding:12px 14px;text-align:right;">RM {{ number_format($line->subtotal, 2) }}</td>
                                         @if(!in_array($returnRequest->status, ['Pending', 'Draft']))
@@ -266,12 +208,8 @@
                             <div class="field-value">RM {{ number_format($returnRequest->creditNote->amount, 2) }}</div>
                         </div>
                         <div class="field">
-                            <div class="field-label">Balance</div>
-                            <div class="field-value">RM {{ number_format($returnRequest->creditNote->remaining_balance, 2) }}</div>
-                        </div>
-                        <div class="field">
-                            <div class="field-label">Status</div>
-                            <div class="field-value">{{ $returnRequest->creditNote->status }}</div>
+                            <div class="field-label">Created Date</div>
+                            <div class="field-value">{{ $returnRequest->creditNote->created_at->format('M d, Y') }}</div>
                         </div>
                     </div>
                 @else
@@ -279,6 +217,55 @@
                 @endif
             </div>
         </div>
+
+        {{-- ── Gross Loss Financial Summary ── --}}
+        @if($returnRequest->invoice)
+        @if($returnRequest->status === 'Pending')
+        <div class="card" style="border: 2px solid #e2e8f0; background: #f8fafc;">
+            <div class="card-body">
+                <h3 class="card-title" style="color:#5a6a85;">💰 Gross Loss Summary</h3>
+                <p class="field-value">Gross loss will be calculated once the supplier approves this return request.</p>
+            </div>
+        </div>
+        @elseif($returnRequest->status === 'Rejected')
+        <div class="card" style="border: 2px solid #e2e8f0; background: #f8fafc;">
+            <div class="card-body">
+                <h3 class="card-title" style="color:#5a6a85;">💰 Gross Loss Summary</h3>
+                <p class="field-value">No gross loss to display — this return request was rejected.</p>
+            </div>
+        </div>
+        @elseif($returnRequest->status === 'Approved' && $returnRequest->creditNote)
+        @php
+            $invoiceTotal   = (float) $returnRequest->invoice->total_amount;
+            $creditAmount   = (float) $returnRequest->creditNote->amount;
+            $grossLoss      = max(0, $invoiceTotal - $creditAmount);
+        @endphp
+        <div class="card" style="border: 2px solid #f0d08a; background: #fffdf5;">
+            <div class="card-body">
+                <h3 class="card-title" style="color:#7a4d06;">💰 Gross Loss Summary</h3>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                    <tbody>
+                        <tr style="border-bottom:1px solid #f0d08a;">
+                            <td style="padding:12px 0;font-size:.9rem;color:#374151;font-weight:600;">Invoice Total</td>
+                            <td style="padding:12px 0;text-align:right;font-size:.95rem;font-weight:700;color:#0f2044;">RM {{ number_format($invoiceTotal, 2) }}</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #f0d08a;">
+                            <td style="padding:12px 0;font-size:.9rem;color:#374151;font-weight:600;">Credit Note Amount</td>
+                            <td style="padding:12px 0;text-align:right;font-size:.95rem;font-weight:700;color:#27ae60;">- RM {{ number_format($creditAmount, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:14px 0;font-size:1rem;font-weight:800;color:#7a4d06;">Gross Loss</td>
+                            <td style="padding:14px 0;text-align:right;font-size:1.1rem;font-weight:800;color:#c0392b;">RM {{ number_format($grossLoss, 2) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="font-size:0.78rem;color:#7a8fa8;line-height:1.6;border-top:1px solid #f0d08a;padding-top:12px;">
+                    Gross loss represents the remaining payable amount after returns. This may include both sold and unsold stock as sales tracking is outside system scope.
+                </p>
+            </div>
+        </div>
+        @endif
+        @endif
 
         @if($returnRequest->status === 'Draft')
         <div style="display:flex; gap: 12px; margin-top: 24px;">
@@ -303,6 +290,4 @@
             <a href="{{ route('owner.return-requests.index') }}" class="btn-secondary">← Back to Return Requests</a>
         </div>
     </div>
-</div>
-</body>
-</html>
+@endsection

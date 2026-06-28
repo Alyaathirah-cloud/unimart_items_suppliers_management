@@ -20,6 +20,8 @@ class PurchaseOrder extends Model
         'unit_price',    // kept for backward compat
         'total_amount',
         'final_amount',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -65,6 +67,11 @@ class PurchaseOrder extends Model
     public function invoice()
     {
         return $this->hasOne(Invoice::class, 'purchase_order_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     // ── Computed helpers ─────────────────────────────────────────────────────

@@ -16,8 +16,7 @@ $notes = \App\Models\CreditNote::all();
 $nc = 0;
 foreach($notes as $note) {
     if($note->amount == 0 && $note->returnRequest) {
-        $item = $note->returnRequest->item;
-        $amount = ($item->unit_price ?? 0) * $note->returnRequest->quantity;
+        $amount = $note->returnRequest->lines()->sum('subtotal');
         $note->update([
             'amount' => $amount,
             'remaining_balance' => $amount

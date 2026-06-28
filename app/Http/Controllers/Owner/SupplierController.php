@@ -49,14 +49,17 @@ class SupplierController extends Controller
             'name' => 'required|string|max:255|unique:suppliers',
             'contact_person' => 'nullable|string|max:255',
             'contact_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email'), Rule::unique('suppliers', 'contact_email')],
-            'contact_phone' => 'nullable|string|max:30',
+            'contact_phone' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
             'address_line_1' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'portal_enabled' => 'sometimes|boolean',
+            'accepts_returns' => 'sometimes|boolean',
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'contact_phone.regex' => 'The phone format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
         ]);
 
         $supplier = DB::transaction(function () use ($request, $portalEnabled) {
@@ -72,6 +75,7 @@ class SupplierController extends Controller
                 'country' => $request->country,
                 'portal_enabled' => $portalEnabled,
                 'portal_link' => $portalEnabled ? route('supplier.login') : null,
+                'accepts_returns' => $request->boolean('accepts_returns'),
                 'temporary_password' => null,
                 'invite_email_status' => $portalEnabled ? 'pending' : 'disabled',
                 'invite_whatsapp_status' => $portalEnabled ? 'pending' : 'disabled',
@@ -97,6 +101,16 @@ class SupplierController extends Controller
 
         if ($portalEnabled) {
             $this->sendInvites($supplier, $supplier->temporary_password);
+            
+            \App\Models\Notification::create([
+                'user_id' => $supplier->user_id,
+                'type' => 'supplier_invited',
+                'message' => 'Your supplier portal account has been created.',
+                'data' => [
+                    'supplier_name' => $supplier->name,
+                    'login_url' => route('supplier.login'),
+                ],
+            ]);
         }
 
         $successMessage = 'Supplier created successfully!';
@@ -137,14 +151,17 @@ class SupplierController extends Controller
                 Rule::unique('users', 'email')->ignore($supplier->user_id),
                 Rule::unique('suppliers', 'contact_email')->ignore($supplier->id),
             ],
-            'contact_phone' => 'nullable|string|max:30',
+            'contact_phone' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
             'address_line_1' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'portal_enabled' => 'sometimes|boolean',
+            'accepts_returns' => 'sometimes|boolean',
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'contact_phone.regex' => 'The phone format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
         ]);
 
         $supplier->update([
@@ -158,6 +175,7 @@ class SupplierController extends Controller
             'postal_code' => $request->postal_code,
             'country' => $request->country,
             'portal_enabled' => $portalEnabled,
+            'accepts_returns' => $request->boolean('accepts_returns'),
             'portal_link' => $portalEnabled ? ($supplier->portal_link ?? route('supplier.login')) : $supplier->portal_link,
         ]);
 
@@ -222,6 +240,16 @@ class SupplierController extends Controller
 
         if ($newlyEnabled) {
             $this->sendInvites($supplier, $generatedPassword);
+            
+            \App\Models\Notification::create([
+                'user_id' => $supplier->user_id,
+                'type' => 'supplier_invited',
+                'message' => 'Your supplier portal account has been created.',
+                'data' => [
+                    'supplier_name' => $supplier->name,
+                    'login_url' => route('supplier.login'),
+                ],
+            ]);
         }
 
         return redirect()->route('owner.suppliers.index')->with('success', $successMessage);
@@ -289,6 +317,7 @@ class SupplierController extends Controller
             'email' => $supplier->contact_email,
             'password' => $password,
             'owner_phone' => $ownerPhone,
+            'telegram_token' => $supplier->generateTelegramToken(),
         ];
     }
 

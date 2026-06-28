@@ -40,6 +40,18 @@ class Item extends Model
         'last_purchase_date'=> 'date',
     ];
 
+    // ── Mutators ─────────────────────────────────────────────────────────────
+
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = \Illuminate\Support\Str::title($value);
+    }
+
+    public function setCategoryAttribute($value)
+    {
+        $this->attributes['category'] = \Illuminate\Support\Str::title($value);
+    }
+
     // ── Relationships ────────────────────────────────────────────────────────
 
     public function supplier()
@@ -126,6 +138,44 @@ class Item extends Model
         if ($this->isOutOfStock()) return 'danger';
         if ($this->isLowStock())   return 'warning';
         return 'success';
+    }
+
+    // ── Expiry + Stock Classification (6-status system) ────────────────────────
+    // Returns one of: OK | Low Stock | Expiring Soon | Low Stock / Expiring Soon
+    //                 | Expired | Low Stock / Expired
+    //
+    // NOTE: Batch tracking is intentionally excluded from this classification.
+    // 22UniMart is a small retail store with high inventory turnover and rarely
+    // maintains multiple batches of the same product simultaneously. The 6-status
+    // system operates at the item level, not the batch level.
+    // Future enhancement: implement batch-level expiry classification for
+    // larger-scale operations with multi-batch inventory management.
+
+    public function inventoryStatusLabel(): string
+    {
+        $expired     = $this->isExpired();
+        $expiringSoon = !$expired && $this->isNearExpiry();
+        $lowStock    = $this->isLowStock();
+
+        if ($expired && $lowStock)      return 'Low Stock / Expired';
+        if ($expired)                   return 'Expired';
+        if ($expiringSoon && $lowStock) return 'Low Stock / Expiring Soon';
+        if ($expiringSoon)              return 'Expiring Soon';
+        if ($lowStock)                  return 'Low Stock';
+        return 'OK';
+    }
+
+    public function inventoryStatusClass(): string
+    {
+        $label = $this->inventoryStatusLabel();
+        return match ($label) {
+            'Expired',
+            'Low Stock / Expired'           => 'danger',
+            'Expiring Soon',
+            'Low Stock / Expiring Soon'     => 'warning',
+            'Low Stock'                     => 'warning',
+            default                         => 'success',
+        };
     }
 
     // ── Reorder helpers ───────────────────────────────────────────────────────

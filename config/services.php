@@ -37,10 +37,17 @@ return [
     ],
 
     'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN'),
-        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
+        // Accept both naming conventions so the code works regardless of which .env key is set
+        'sid'                   => env('TWILIO_SID', env('TWILIO_ACCOUNT_SID')),
+        'token'                 => env('TWILIO_AUTH_TOKEN'),
+        'whatsapp_from'         => env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER')),
         'owner_whatsapp_number' => env('OWNER_WHATSAPP_NUMBER'),
+    ],
+
+    'telegram' => [
+        'bot_token'    => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME', 'naa_um_bot'),
+        'chat_id'      => env('TELEGRAM_CHAT_ID'),
     ],
 
 ];

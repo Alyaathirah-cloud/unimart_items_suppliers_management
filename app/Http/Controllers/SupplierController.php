@@ -7,6 +7,7 @@ use App\Models\ReturnRequest;
 use App\Models\Notification;
 use App\Models\Delivery;
 use App\Models\CreditNote;
+use App\Services\EmailNotificationService;
 use Illuminate\Http\Request;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
@@ -29,16 +30,28 @@ class SupplierController extends Controller
 
         $orders = PurchaseOrder::where('supplier_id', $supplier->id)
             ->where('status', 'Pending')
-            ->orderBy('order_date', 'asc')
+            ->with(['orderItems.item', 'item', 'delivery', 'invoice', 'creditNote'])
+            ->latest()
             ->limit(5)
             ->get();
+            
         $returns = ReturnRequest::where('supplier_id', $supplier->id)
             ->where('status', 'Pending')
             ->latest()
             ->limit(5)
             ->get();
+            
         $creditNotes = \App\Models\CreditNote::where('supplier_id', $supplier->id)->latest()->limit(5)->get();
-        return view('supplier.dashboard', compact('orders', 'returns', 'creditNotes'));
+        
+        $pendingReturnsCount = ReturnRequest::where('supplier_id', $supplier->id)
+            ->where('status', 'Pending')
+            ->count();
+            
+        $invoicesAwaitingCount = \App\Models\Invoice::where('supplier_id', $supplier->id)
+            ->where('status', 'Unpaid')
+            ->count();
+
+        return view('supplier.dashboard', compact('orders', 'returns', 'creditNotes', 'pendingReturnsCount', 'invoicesAwaitingCount'));
     }
 
     public function orders()
@@ -55,12 +68,24 @@ class SupplierController extends Controller
         return view('supplier.purchase_orders.index', compact('orders'));
     }
 
+    public function showOrder(PurchaseOrder $order)
+    {
+        $supplier = auth()->user()->supplier;
+        if (!$supplier || $order->supplier_id !== $supplier->id) {
+            abort(403);
+        }
+
+        $order->load(['orderItems.item', 'item', 'delivery', 'user']);
+
+        return view('supplier.purchase_orders.show', compact('order'));
+    }
+
     public function returnRequests(Request $request)
     {
         $supplier = auth()->user()->supplier;
         if (!$supplier) abort(403);
 
-        $query = ReturnRequest::with(['item', 'creditNote', 'lines.item'])
+        $query = ReturnRequest::with(['creditNote', 'lines.item'])
             ->where('supplier_id', $supplier->id);
 
         if ($request->filled('status')) {
@@ -82,7 +107,7 @@ class SupplierController extends Controller
         $supplier = auth()->user()->supplier;
         if (!$supplier) abort(403);
 
-        $creditNotes = \App\Models\CreditNote::with('returnRequest.item')
+        $creditNotes = \App\Models\CreditNote::with('returnRequest.lines.item')
             ->where('supplier_id', $supplier->id)
             ->latest()
             ->paginate(15);
@@ -97,7 +122,7 @@ class SupplierController extends Controller
             abort(403);
         }
 
-        $creditNote->load('returnRequest.item', 'items.item');
+        $creditNote->load('returnRequest.lines.item', 'items.item');
         return view('supplier.credit_notes.show', compact('creditNote'));
     }
 
@@ -108,12 +133,12 @@ class SupplierController extends Controller
         }
         $request->validate([
             'status' => 'required|in:Approved,Rejected',
-            'delivery_date' => 'required_if:status,Approved|nullable|date|after:today',
+            'delivery_date' => 'nullable|date|after:today',
             'delivery_time' => 'nullable|date_format:H:i',
             'notes' => 'nullable|string',
         ]);
 
-        if ($request->status === 'Approved') {
+        if ($request->status === 'Approved' && $request->filled('delivery_date')) {
             $deliveryDate = \Carbon\Carbon::parse($request->delivery_date);
             $deliveryTime = $request->delivery_time
                 ? \Carbon\Carbon::parse($request->delivery_time)
@@ -152,28 +177,6 @@ class SupplierController extends Controller
                         ])->withInput();
                     }
                 } else {
-
-                // Send WhatsApp to owner about PO status
-                try {
-                    $callMeBotPhone = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
-                    $callMeBotApiKey = trim((string) Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
-                    $ownerPhone = trim((string) Setting::get('owner_whatsapp_number', config('services.twilio.owner_whatsapp_number')));
-
-                    if ($callMeBotPhone !== '' && $callMeBotApiKey !== '') {
-                        $cb = new \App\Services\CallMeBotService();
-                        $cb->sendPurchaseOrderStatusToOwner(strtolower($request->status) === 'approved' ? 'approved' : 'rejected', $order->po_number, optional($order->supplier)->name ?? '', $ownerPhone, ($order->delivery ? optional($order->delivery)->delivery_date : null));
-                    } elseif ($ownerPhone && config('services.twilio.sid')) {
-                        $w = new \App\Services\WhatsAppService();
-                        if ($request->status === 'Approved') {
-                            $msg = "✅ PURCHASE ORDER APPROVED\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nExpected Delivery:\n" . ($request->delivery_date ?: 'TBD');
-                        } else {
-                            $msg = "❌ PURCHASE ORDER REJECTED\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nPlease review supplier comments.";
-                        }
-                        $w->sendMessage($ownerPhone, $msg);
-                    }
-                } catch (\Throwable $e) {
-                    Log::channel('whatsapp_alerts')->error('Failed to send PO status whatsapp', ['po' => $order->po_number, 'error' => $e->getMessage()]);
-                }
                     // Monday – Friday: 08:00 – 17:00
                     if ($timeInMinutes < $startMinutes || $timeInMinutes > $endWeekday) {
                         return back()->withErrors([
@@ -187,16 +190,16 @@ class SupplierController extends Controller
         $order->update(['status' => $request->status]);
 
         if ($request->status === 'Approved') {
-            $deliveryDate = $request->delivery_date ?: now()->addDays(3)->toDateString();
-
-            $order->delivery()->updateOrCreate(
-                ['purchase_order_id' => $order->id],
-                [
-                    'delivery_date' => $deliveryDate,
-                    'delivery_time' => $request->delivery_time,
-                    'notes' => $request->notes,
-                ]
-            );
+            if ($request->filled('delivery_date')) {
+                $order->delivery()->updateOrCreate(
+                    ['purchase_order_id' => $order->id],
+                    [
+                        'delivery_date' => $request->delivery_date,
+                        'delivery_time' => $request->delivery_time,
+                        'notes' => $request->notes,
+                    ]
+                );
+            }
 
             // Auto-generate the invoice once the supplier approves the order so downstream
             // invoice and export flows continue to work without an extra owner action.
@@ -206,30 +209,75 @@ class SupplierController extends Controller
             $order->delivery()->delete();
         }
 
+        // Send WhatsApp to owner about PO status
+        try {
+            $callMeBotPhone = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
+            $callMeBotApiKey = trim((string) Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
+            $ownerPhone = trim((string) Setting::get('owner_whatsapp_number', config('services.twilio.owner_whatsapp_number')));
+
+            if ($callMeBotPhone !== '' && $callMeBotApiKey !== '') {
+                $cb = new \App\Services\CallMeBotService();
+                $cb->sendPurchaseOrderStatusToOwner(strtolower($request->status) === 'approved' ? 'approved' : 'rejected', $order->po_number, optional($order->supplier)->name ?? '', $ownerPhone, ($order->delivery ? optional($order->delivery)->delivery_date : null));
+            } elseif ($ownerPhone && config('services.twilio.sid')) {
+                $w = new \App\Services\WhatsAppService();
+                if ($request->status === 'Approved') {
+                    $msg = "✅ PURCHASE ORDER APPROVED\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nExpected Delivery:\n" . ($request->delivery_date ?: 'TBD');
+                } else {
+                    $msg = "❌ PURCHASE ORDER REJECTED\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nPlease review supplier comments.";
+                }
+                $w->sendMessage($ownerPhone, $msg);
+            }
+
+            // Telegram Notification
+            $telegram = new \App\Services\TelegramService();
+            if ($request->status === 'Approved') {
+                $tgMsg = "✅ *PURCHASE ORDER APPROVED*\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nExpected Delivery:\n" . ($request->delivery_date ?: 'TBD');
+            } else {
+                $tgMsg = "❌ *PURCHASE ORDER REJECTED*\n\nPO Number: {$order->po_number}\nSupplier: " . (optional($order->supplier)->name ?? '') . "\n\nPlease review supplier comments.";
+            }
+            $telegram->send($tgMsg, null, 'Markdown');
+
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp_alerts')->error('Failed to send PO status whatsapp/telegram', ['po' => $order->po_number, 'error' => $e->getMessage()]);
+        }
+
         $owner = \App\Models\User::where('role', 'owner')->first();
         if ($owner) {
-            Notification::send(
-                $owner,
+            \App\Models\Notification::sendToOwners(
                 'purchase_order_' . strtolower($request->status),
                 "Purchase order {$order->po_number} has been {$request->status}.",
                 [
-                    'po_number' => $order->po_number,
-                    'status' => $request->status,
+                    'po_number'     => $order->po_number,
+                    'status'        => $request->status,
                     'supplier_name' => optional($order->supplier)->name ?? auth()->user()->supplier->name,
                 ]
             );
 
             if ($request->status === 'Approved' && $request->delivery_date) {
-                Notification::send(
-                    $owner,
+                \App\Models\Notification::sendToOwners(
                     'purchase_order_delivered',
                     "Delivery details submitted for purchase order {$order->po_number}.",
                     [
-                        'po_number' => $order->po_number,
+                        'po_number'     => $order->po_number,
                         'delivery_date' => $request->delivery_date,
                         'delivery_time' => $request->delivery_time,
                     ]
                 );
+            }
+
+            // Send email notification to owner (and supplier) when PO is approved
+            if ($request->status === 'Approved') {
+                try {
+                    $supplierEmail = optional(auth()->user()->supplier)->email ?? null;
+                    (new EmailNotificationService)->sendPurchaseOrderApproved(
+                        $owner->email,
+                        $supplierEmail,
+                        $order->po_number,
+                        optional($order->supplier)->name ?? null
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('PO approved email failed', ['po' => $order->po_number, 'error' => $e->getMessage()]);
+                }
             }
         }
 
@@ -306,8 +354,7 @@ class SupplierController extends Controller
 
         $owner = \App\Models\User::where('role', 'owner')->first();
         if ($owner) {
-            Notification::send(
-                $owner,
+            \App\Models\Notification::sendToOwners(
                 'purchase_order_delivered',
                 "Delivery details submitted for purchase order {$order->po_number}.",
                 [
@@ -465,12 +512,25 @@ class SupplierController extends Controller
         // Notify owner
         $owner = \App\Models\User::where('role', 'owner')->first();
         if ($owner) {
-            Notification::send(
-                $owner,
+            \App\Models\Notification::sendToOwners(
                 'return_request_' . strtolower($request->status),
                 "Return request {$return->return_number} has been " . strtolower($request->status) . ".",
                 ['return_number' => $return->return_number, 'status' => $request->status]
             );
+
+            // Send email to owner + supplier when return is approved
+            if ($request->status === 'Approved') {
+                try {
+                    $supplierEmail = optional($return->supplier)->email ?? null;
+                    (new EmailNotificationService)->sendReturnRequestApproved(
+                        $owner->email,
+                        $supplierEmail,
+                        $return->return_number
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('RR approved email failed', ['rr' => $return->return_number, 'error' => $e->getMessage()]);
+                }
+            }
 
             try {
                 $callMeBotPhone = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
@@ -507,7 +567,7 @@ class SupplierController extends Controller
             return response()->json(['success' => false, 'message' => 'Credit note not available.']);
         }
 
-        $creditNote = $return->creditNote->load(['supplier', 'returnRequest.item', 'purchaseOrder']);
+        $creditNote = $return->creditNote->load(['supplier', 'returnRequest.lines.item', 'purchaseOrder']);
 
         return response()->json([
             'success' => true,
@@ -521,7 +581,7 @@ class SupplierController extends Controller
             abort(403);
         }
 
-        $creditNote->load(['supplier', 'returnRequest.item', 'purchaseOrder']);
+        $creditNote->load(['supplier', 'returnRequest.lines.item', 'purchaseOrder']);
 
         $filename = 'credit-note-' . $creditNote->credit_note_id . '.csv';
         $headers = [
@@ -571,7 +631,7 @@ class SupplierController extends Controller
         $supplier = auth()->user()->supplier;
         if (!$supplier) abort(403);
 
-        $query = \App\Models\Invoice::with('purchaseOrder')
+        $query = \App\Models\Invoice::with(['purchaseOrder', 'lines.item', 'creditNotes'])
             ->where('supplier_id', $supplier->id);
 
         if ($request->filled('status')) {
@@ -580,8 +640,59 @@ class SupplierController extends Controller
 
         $query->orderBy('created_at', 'desc');
 
-        $invoices = $query->paginate(15);
+        $invoices = $query->get(); // Using get() to compute statuses easily for summary cards, but paginate() works if we don't mind missing full stats. Actually user wants total stats.
         return view('supplier.invoices.index', compact('invoices'));
+    }
+
+    public function showInvoice(\App\Models\Invoice $invoice)
+    {
+        $supplier = auth()->user()->supplier;
+        if (!$supplier || $invoice->supplier_id !== $supplier->id) {
+            abort(403);
+        }
+
+        $invoice->load(['lines.item', 'purchaseOrder', 'creditNotes']);
+        return view('supplier.invoices.show', compact('invoice'));
+    }
+
+    public function markInvoicePaid(\App\Models\Invoice $invoice)
+    {
+        $supplier = auth()->user()->supplier;
+        if (!$supplier || $invoice->supplier_id !== $supplier->id) {
+            abort(403);
+        }
+
+        $previousStatus = $invoice->computeStatus();
+
+        if (!in_array($previousStatus, ['Unpaid', 'Settled'])) {
+            return back()->with('error', 'Invoice cannot be marked as paid in its current status.');
+        }
+
+        $invoice->update([
+            'status' => 'Paid',
+            'paid_date' => now()->toDateString(),
+            'confirmed_by' => auth()->user()->id
+        ]);
+
+        \App\Models\InvoiceAuditLog::create([
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'supplier_user' => auth()->user()->name,
+            'previous_status' => \App\Models\Invoice::STATUS_PENDING_PAYMENT,
+            'new_status' => 'Paid',
+            'confirmed_at' => now(),
+        ]);
+
+        $owner = \App\Models\User::where('role', 'owner')->first();
+        if ($owner) {
+            \App\Models\Notification::sendToOwners(
+                'invoice_paid',
+                "Invoice {$invoice->invoice_number} has been marked as paid by the supplier.",
+                ['invoice_id' => $invoice->id]
+            );
+        }
+
+        return redirect()->route('supplier.invoices.show', $invoice)->with('success', 'Invoice marked as paid successfully.');
     }
 
     public function exportInvoicePdf(\App\Models\Invoice $invoice)

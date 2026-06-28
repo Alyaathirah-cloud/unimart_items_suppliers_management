@@ -20,8 +20,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
+        'whatsapp_number', // Owner's WhatsApp number for alert notifications
         'password',
-        'role', // admin, owner, supplier
+        'role', // admin, owner, supplier, staff
+        'status',
+        'is_approved',
         'must_change_password',
     ];
 
@@ -52,6 +56,16 @@ class User extends Authenticatable
     public function isAdmin()
     {
         return $this->role === 'admin';
+    }
+
+    public function isStaff()
+    {
+        return $this->role === 'staff';
+    }
+
+    public function isMartUser()
+    {
+        return in_array($this->role, ['owner', 'staff']);
     }
 
     public function isOwner()

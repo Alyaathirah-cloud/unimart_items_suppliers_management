@@ -93,16 +93,7 @@
     </div>
     <div class="topbar-right">
         <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-        <div class="topbar-profile">
-            <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            <div>
-                <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                    @csrf
-                    <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                </form>
-            </div>
-        </div>
+        @include('owner.components.topbar-profile')
     </div>
 @endsection
 
@@ -199,6 +190,7 @@
                     <th>Selling Price</th>
                     <th>ROP Threshold</th>
                     <th>Expiry Date</th>
+                    <th>Days Until Expiry</th>
                     <th>Supplier</th>
                     <th>Actions</th>
                 </tr>
@@ -211,6 +203,8 @@
                         $isNear    = $item->isNearExpiry();
                         $isDamaged = $item->isDamaged();
                         $hasPendingReturn = $pendingReturnItemIds->contains($item->id);
+
+                        $daysUntil = $item->expiry_date ? now()->startOfDay()->diffInDays($item->expiry_date->startOfDay(), false) : null;
                     @endphp
                     <tr class="{{ $isExpired || $isDamaged ? 'expired-row' : '' }}">
                         <td>
@@ -234,7 +228,7 @@
                                     @if($isDamaged)
                                         <span class="badge-inline badge-expired">Damaged ({{ max(0, (int) $item->damaged_quantity) }} units)</span>
                                     @endif
-                                    @if($isExpired)
+                                    @if($isExpired && $item->quantity > 0)
                                         <span class="badge-inline badge-expired">Expired</span>
                                     @endif
                                     @if($hasPendingReturn)
@@ -253,7 +247,24 @@
                         <td class="{{ $isExpired ? 'expiry-red' : '' }}">
                             {{ $item->expiry_date ? $item->expiry_date->format('Y-m-d') : '—' }}
                         </td>
-                        <td>{{ optional($item->supplier)->name ?? '—' }}</td>
+                        <td>
+                            @if($daysUntil === null)
+                                —
+                            @elseif($daysUntil < 0)
+                                <span style="color:#c0392b;font-weight:600;">Expired {{ abs((int)$daysUntil) }} days ago</span>
+                            @elseif($daysUntil <= 7)
+                                <span style="color:#e67e22;font-weight:600;">{{ (int)$daysUntil }} days left</span>
+                            @else
+                                <span style="color:#27ae60;font-weight:600;">{{ (int)$daysUntil }} days left</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($item->supplier_id)
+                                {{ optional($item->supplier)->name }}
+                            @else
+                                <span class="badge-inline badge-normal" style="margin-left:0;">Direct Purchase</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="actions">
                                 <a href="{{ route('owner.items.edit', $item) }}" class="btn btn-edit">✏ Edit</a>
@@ -261,13 +272,13 @@
                                     @csrf @method('DELETE')
                                     <button type="button" class="btn btn-del" onclick="confirmDelete(this.closest('form'))">🗑 Delete</button>
                                 </form>
-                                @if($item->isOutOfStock() || $isLow)
+                                @if(($item->isOutOfStock() || $isLow) && $item->supplier_id)
                                     <a href="{{ route('owner.purchase-orders.create', ['item_id' => $item->id]) }}" class="btn btn-po">🛒 Create PO</a>
                                 @endif
                                 @if(!$isDamaged && !$isExpired)
                                     <button type="button" class="btn btn-edit" style="color:#d4870a;border-color:#fde0a0" onclick="markDamaged({{ $item->id }}, '{{ addslashes($item->name) }}', {{ max(1, (int) $item->quantity) }})">⚠ Flag Damaged</button>
                                 @endif
-                                @if(($isExpired || $isDamaged) && !$hasPendingReturn)
+                                @if($item->quantity > 0 && ($isExpired || $isDamaged) && !$hasPendingReturn && $item->supplier_id)
                                     <a href="{{ route('owner.return-requests.create', array_filter(['item_id' => $item->id, 'quantity' => $isDamaged ? max(0, (int) $item->damaged_quantity) : null])) }}" class="btn btn-rr">↩ Return</a>
                                 @endif
                                 @if($isDamaged && !$hasPendingReturn)

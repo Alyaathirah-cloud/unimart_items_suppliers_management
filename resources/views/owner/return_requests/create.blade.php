@@ -1,456 +1,473 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Create Return Request – 22UniMart</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+@extends('layouts.owner')
+
+@section('title', 'Create Return Request – 22UniMart')
+
+@push('styles')
     <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Inter',sans-serif;background:#eef2f7;display:flex;min-height:100vh;color:#1a2744}
-        .sidebar{width:210px;flex-shrink:0;background:#0f2044;color:#fff;display:flex;flex-direction:column;padding:0 0 24px;position:fixed;top:0;left:0;height:100vh}
-        .sidebar-brand{padding:20px 20px 4px;display:flex;align-items:center;gap:12px}
-        .brand-sq{width:32px;height:32px;background:#fff;color:#0f2044;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;flex-shrink:0}
-        .brand-name{font-size:.9rem;font-weight:800}
-        .brand-sub{font-size:.68rem;color:#8ca0c0}
-        .sidebar-nav{flex:1;margin-top:20px;overflow-y:auto}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;font-size:.88rem;font-weight:500;color:#8ca0c0;text-decoration:none;transition:all .15s;border-left:3px solid transparent}
-        .nav-item:hover{color:#fff;background:rgba(255,255,255,.06)}
-        .nav-item.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:#4a90d9}
-        .nav-icon{width:18px;text-align:center;flex-shrink:0}
-        .sidebar-bottom{padding:0 20px;display:flex;flex-direction:column;gap:8px}
-        .btn-logout{background:#c0392b;color:#fff;border:none;border-radius:8px;padding:12px 16px;font-size:.85rem;font-weight:600;cursor:pointer;width:100%;transition:background .15s}
-        .btn-logout:hover{background:#a93226}
-        .main{margin-left:210px;flex:1;display:flex;flex-direction:column}
-        .topbar{background:#fff;padding:0 32px;height:56px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10;border-bottom:1px solid #e2e8f0}
-        .breadcrumbs{font-size:.75rem;font-weight:700;color:#7a8fa8;letter-spacing:1px;text-transform:uppercase}
-        .breadcrumbs a{color:inherit;text-decoration:none}
-        .breadcrumbs a:hover{color:#0f2044}
-        .topbar-right{margin-left:auto;display:flex;align-items:center;gap:20px}
-        .avatar{width:32px;height:32px;border-radius:50%;background:#0f2044;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:700}
-        .content{padding:40px;max-width:960px}
-        .page-title{font-size:2rem;font-weight:800;color:#0f2044;margin-bottom:6px}
-        .page-sub{font-size:.93rem;color:#5a6a85;line-height:1.6;margin-bottom:28px;max-width:760px}
-        /* Context Banner */
-        .context-banner{display:flex;align-items:center;gap:16px;background:#fff3cd;border:1px solid #ffc107;border-left:4px solid #d4870a;border-radius:10px;padding:14px 20px;margin-bottom:24px}
-        .context-banner .cb-icon{font-size:1.4rem}
-        .context-banner .cb-text{flex:1;font-size:.88rem;color:#7a4d06}
-        .context-banner .cb-text strong{color:#5a3500;display:block;margin-bottom:2px}
-        /* Empty banner */
-        .empty-banner{background:#f8f9fc;border:1.5px dashed #cbd5e1;border-radius:10px;padding:28px;text-align:center;color:#9daec5;font-size:.9rem;margin-top:8px}
-        .empty-banner .eb-icon{font-size:2rem;margin-bottom:8px}
+        .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+        .page-title { font-size: 1.9rem; font-weight: 800; color: #0f2044; margin-bottom: 4px; }
+        .page-sub { font-size: 0.9rem; color: #5a6a85; line-height: 1.6; }
+
         /* Cards */
-        .form-card{background:#fff;border-radius:14px;padding:28px 32px;box-shadow:0 1px 20px rgba(15,32,68,.07);margin-bottom:20px}
-        .card-title{font-size:1rem;font-weight:700;color:#0f2044;margin-bottom:18px;display:flex;align-items:center;gap:8px}
-        .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
-        .form-group{display:flex;flex-direction:column;gap:6px}
-        .form-group.span-2{grid-column:span 2}
-        .form-label{font-size:.72rem;font-weight:700;color:#5a6a85;text-transform:uppercase;letter-spacing:.5px}
-        .form-label .req{color:#e74c3c}
-        .form-control,.form-select{background:#f4f6fb;border:1.5px solid transparent;border-radius:9px;padding:12px 14px;font-size:.93rem;color:#1a2744;transition:all .2s;outline:none;font-family:'Inter',sans-serif;width:100%}
-        .form-control:focus,.form-select:focus{background:#fff;border-color:#4a90d9;box-shadow:0 0 0 3px rgba(74,144,217,.12)}
-        .form-control::placeholder{color:#9daec5}
-        .form-control:disabled,.form-select:disabled{opacity:.6;cursor:not-allowed}
-        /* Invoice preview strip */
-        .inv-preview{display:flex;gap:20px;flex-wrap:wrap;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:9px;padding:12px 16px;margin-top:12px;font-size:.84rem;color:#3a4d6a}
-        .inv-preview span{font-weight:600;color:#0f2044}
-        /* Table */
-        .table-wrap{overflow-x:auto;margin-top:6px}
-        table.items-table{width:100%;border-collapse:collapse}
-        table.items-table thead th{padding:10px 14px;background:#f8fafc;font-size:.68rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7a8fa8;border-bottom:2px solid #e8edf4;white-space:nowrap}
-        table.items-table thead th:last-child{text-align:right}
-        table.items-table tbody td{padding:12px 14px;border-bottom:1px solid #f0f4f8;font-size:.9rem;color:#1a2744;vertical-align:middle}
-        table.items-table tbody tr:last-child td{border-bottom:none}
-        table.items-table tfoot td{padding:12px 14px;background:#f8fafc;font-weight:700;font-size:.93rem}
-        .total-credit-row{display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:14px 0 2px;border-top:2px solid #e8edf4;margin-top:8px}
-        .total-credit-label{font-size:.8rem;font-weight:700;color:#5a6a85;text-transform:uppercase;letter-spacing:.5px}
-        .total-credit-value{font-size:1.35rem;font-weight:800;color:#0f2044}
-        /* Qty input */
-        .qty-input{width:90px;border:1.5px solid #d1dce8;border-radius:7px;padding:7px 10px;font-family:'Inter',sans-serif;font-size:.9rem;color:#1a2744;outline:none;text-align:center;transition:border-color .15s}
-        .qty-input:focus{border-color:#4a90d9;box-shadow:0 0 0 2px rgba(74,144,217,.12)}
-        .qty-input.error{border-color:#e74c3c}
+        .card { background: #fff; border-radius: 14px; box-shadow: 0 1px 20px rgba(15,32,68,0.07); margin-bottom: 24px; overflow: hidden; border: 1px solid #e8edf4; }
+        .card-header { padding: 20px 24px 16px; border-bottom: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; }
+        .card-title { font-size: 1rem; font-weight: 800; color: #0f2044; display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 24px; }
+
+        /* Suggestion list */
+        .suggestion-item { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border: 1.5px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; background: #fafbfd; transition: border-color 0.2s, background 0.2s; }
+        .suggestion-item.checked { border-color: #4a90d9; background: #f0f7ff; }
+        .suggestion-item.checked-damaged { border-color: #e74c3c; background: #fff8f7; }
+        .suggestion-checkbox { margin-top: 3px; width: 18px; height: 18px; cursor: pointer; accent-color: #4a90d9; flex-shrink: 0; }
+        .suggestion-info { flex: 1; }
+        .suggestion-name { font-weight: 700; color: #0f2044; font-size: 0.95rem; }
+        .suggestion-meta { font-size: 0.78rem; color: #7a8fa8; margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .suggestion-meta .dot { color: #d1dce8; }
+        .badge-expired { background: #fef3e2; color: #d4870a; border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; font-weight: 700; }
+        .badge-damaged { background: #fdedec; color: #c0392b; border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; font-weight: 700; }
+        /* Recommendation badges */
+        .badge-return { background: #d1fae5; color: #065f46; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-dispose { background: #fff3cd; color: #92400e; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+        .suggestion-controls { display: flex; gap: 12px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+        .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+        .ctrl-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9daec5; }
+        .form-control { border: 1px solid #d1dce8; border-radius: 7px; padding: 7px 10px; font-size: 0.88rem; font-family: Inter, sans-serif; color: #1a2744; background: #fff; outline: none; transition: border-color 0.15s; }
+        .form-control:focus { border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.1); }
+        .form-control:disabled { background: #f4f6fb; color: #9daec5; cursor: not-allowed; }
+        .qty-input { width: 90px; }
+
+        /* Counter bar */
+        .counter-bar { display: flex; align-items: center; gap: 24px; padding: 14px 18px; background: #f0f7ff; border-radius: 8px; margin-top: 8px; border: 1px solid #cce0f5; }
+        .counter-item { font-size: 0.82rem; color: #3a4d6a; }
+        .counter-item strong { color: #0f2044; font-size: 1rem; }
+
+        /* Empty suggestions */
+        .no-suggestions { text-align: center; padding: 48px 24px; color: #9daec5; }
+        .no-suggestions .icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .no-suggestions p { font-size: 0.9rem; font-weight: 600; color: #7a8fa8; }
+        .no-suggestions span { font-size: 0.8rem; color: #aab8cc; }
+
+        /* Preview section */
+        .preview-card { background: #fff; border-radius: 14px; box-shadow: 0 1px 20px rgba(15,32,68,0.07); margin-bottom: 24px; overflow: hidden; border: 1px solid #e8edf4; display: none; }
+        .preview-card.visible { display: block; }
+        .preview-warning { background: #fffbea; border-left: 3px solid #f59e0b; padding: 12px 18px; font-size: 0.82rem; color: #7a4d06; font-weight: 500; margin: 0 24px 16px; border-radius: 0 6px 6px 0; }
+        .preview-group { padding: 0 24px 16px; }
+        .preview-supplier { font-weight: 700; color: #0f2044; font-size: 0.88rem; margin-bottom: 4px; }
+        .preview-invoice { font-size: 0.78rem; color: #7a8fa8; margin-bottom: 8px; }
+        .preview-item { font-size: 0.85rem; color: #3a4d6a; padding: 4px 0; border-bottom: 1px solid #f4f6fb; display: flex; justify-content: space-between; }
+        .preview-item:last-child { border-bottom: none; }
+        .preview-separator { height: 1px; background: #eef2f7; margin: 12px 24px; }
+
+        /* Notes */
+        .notes-area { width: 100%; border: 1px solid #d1dce8; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; font-family: Inter, sans-serif; color: #1a2744; resize: vertical; min-height: 80px; outline: none; transition: border-color 0.15s; }
+        .notes-area:focus { border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.1); }
+
         /* Actions */
-        .form-actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px}
-        .btn-submit{background:#0f2044;color:#fff;border:none;border-radius:9px;padding:13px 26px;font-size:.93rem;font-weight:700;cursor:pointer;transition:background .15s;font-family:'Inter',sans-serif}
-        .btn-submit:hover:not(:disabled){background:#122a50}
-        .btn-submit:disabled{opacity:.45;cursor:not-allowed}
-        .btn-discard{color:#5a6a85;text-decoration:none;font-weight:600;font-size:.9rem}
-        /* Alerts */
-        .alert{padding:12px 18px;border-radius:9px;font-size:.88rem;margin-bottom:18px}
-        .alert-error{background:#fdedec;color:#c0392b;border:1px solid #f5b7b1}
-        .alert-error li{margin-left:16px;margin-top:4px}
-        /* Badge */
-        .badge-expired{display:inline-flex;align-items:center;gap:5px;background:#fdedec;color:#c0392b;border:1px solid #f5b7b1;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:700}
+        .action-row { display: flex; align-items: center; gap: 16px; margin-top: 8px; }
+        .btn-submit { background: #0f2044; color: #fff; border: none; border-radius: 10px; padding: 14px 32px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.1s; font-family: Inter, sans-serif; }
+        .btn-submit:hover { background: #1e3a6e; }
+        .btn-submit:active { transform: translateY(1px); }
+        .btn-submit:disabled { background: #9daec5; cursor: not-allowed; }
+        .btn-cancel { background: #fff; border: 1px solid #d1dce8; color: #5a6a85; border-radius: 10px; padding: 13px 24px; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; font-family: Inter, sans-serif; transition: background 0.15s; }
+        .btn-cancel:hover { background: #f4f6fb; }
+        .btn-back { background: #fff; border: 1px solid #e2e8f0; color: #3a4d6a; border-radius: 8px; padding: 10px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-back:hover { background: #f8fafc; border-color: #d1dce8; }
+
+        /* Error */
+        .error-box { background: #fdedec; border: 1px solid #f5b7b1; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; color: #c0392b; font-size: 0.88rem; }
+        .error-box ul { margin: 8px 0 0 16px; }
+        
+        .center-form { max-width: 1000px; margin: 0 auto; width: 100%; }
     </style>
-</head>
-<body>
+@endpush
 
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-sq">22</div>
-        <div>
-            <div class="brand-name">22UNIMART</div>
-            <div class="brand-sub">Inventory Control</div>
-        </div>
-    </div>
-    <nav class="sidebar-nav">
-        <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}"><span class="nav-icon">⊞</span> Dashboard</a>
-        <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}"><span class="nav-icon">📦</span> Inventory</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
-        <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}"><span class="nav-icon">🛒</span> Purchase Orders</a>
-        <a href="{{ route('owner.return-requests.index') }}" class="nav-item active"><span class="nav-icon">↩</span> Return Requests</a>
-        <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}"><span class="nav-icon">📋</span> Credit Notes</a>
-        <a href="{{ route('owner.invoices.index') }}" class="nav-item {{ request()->routeIs('owner.invoices.*') ? 'active' : '' }}"><span class="nav-icon">📄</span> Invoices</a>
-        <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}"><span class="nav-icon">🔔</span> Notifications</a>
-    </nav>
-    <div class="sidebar-bottom">
-        <div style="color:#fff;font-weight:bold;font-size:.82rem;padding:6px 0">Role: Owner</div>
-        <form action="{{ route('logout') }}" method="POST" style="margin:0;width:100%">
-            @csrf
-            <button type="submit" class="btn-logout">Logout</button>
-        </form>
-    </div>
-</aside>
+@section('breadcrumbs')
+    <a href="{{ route('owner.return-requests.index') }}">Return Requests</a> › <span style="color:#0f2044;">Create</span>
+@endsection
 
-<div class="main">
-    <div class="topbar">
-        <div class="breadcrumbs"><a href="{{ route('owner.return-requests.index') }}">Return Requests</a> › <span style="color:#0f2044">Create</span></div>
-        <div class="topbar-right">
-            <a href="{{ route('owner.notifications.index') }}" style="text-decoration:none;font-size:1.1rem;color:#5a6a85">🔔</a>
-            <div style="display:flex;align-items:center;gap:8px">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf
-                        <button type="submit" style="background:none;border:none;font-size:.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0">Logout</button>
-                    </form>
-                </div>
+@section('content')
+    <div class="center-form">
+        <div class="page-header">
+            <div>
+                <div class="page-title">Create Return Request</div>
+                <div class="page-sub">System has automatically detected expired and damaged items. Review the suggestions below, adjust quantities if needed, and submit.</div>
+            </div>
+            <div>
+                <a href="{{ route('owner.return-requests.index') }}" class="btn-back">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                    Back to Return Requests
+                </a>
             </div>
         </div>
-    </div>
 
-    <div class="content">
-        <div class="page-title">Create Return Request</div>
-        <div class="page-sub">Submit a return request for expired or damaged inventory. An invoice is required to calculate the credit amount based on the original purchase price.</div>
-
-        {{-- Context banner when launched from expired inventory --}}
-        @if($preselectedItem)
-        <div class="context-banner">
-            <div class="cb-icon">⚠️</div>
-            <div class="cb-text">
-                <strong>Auto-filled from return-eligible inventory</strong>
-                {{ $preselectedItem->name }} ({{ optional($preselectedItem->supplier)->name ?? 'Unknown Supplier' }}) — Remaining Qty: {{ $preselectedItem->quantity }}
-                @if($preselectedItem->isExpired())
-                    &nbsp;<span class="badge-expired">Expired {{ $preselectedItem->expiry_date?->format('d M Y') }}</span>
-                @elseif($preselectedItem->isDamaged())
-                    &nbsp;<span class="badge-expired">Damaged ({{ max(0, (int) $preselectedItem->damaged_quantity) }} units) {{ $preselectedItem->damage_reason ? '(' . $preselectedItem->damage_reason . ')' : '' }}</span>
-                @endif
-            </div>
-            <a href="{{ route('owner.return-requests.create') }}" style="font-size:.8rem;color:#5a6a85;text-decoration:none;white-space:nowrap">✕ Clear</a>
-        </div>
-        @endif
 
         @if($errors->any())
-        <div class="alert alert-error">
+        <div class="error-box">
             <strong>Please fix the following errors:</strong>
-            <ul>@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+            <ul>
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
         </div>
         @endif
 
-        {{-- No invoices available --}}
-        @if($invoices->isEmpty())
-        <div class="form-card">
-            <div class="empty-banner">
-                <div class="eb-icon">📄</div>
-                <div>
-                    @if($preselectedItem)
-                        <strong>No related invoice found for this item.</strong><br>
-                        A received purchase order invoice is required before a return request can be created for <em>{{ $preselectedItem->name }}</em>.
-                    @else
-                        <strong>No invoices available.</strong><br>
-                        Invoices are created automatically when a purchase order is marked as received.
+        <form action="{{ route('owner.return-requests.store') }}" method="POST" id="returnForm">
+            @csrf
+
+            {{-- SECTION 1: Suggested Return Items --}}
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        🔴 Suggested Return Items
+                        <span style="font-size:0.75rem;font-weight:500;color:#7a8fa8;margin-left:4px;">Items flagged as expired or damaged in your inventory</span>
+                    </div>
+                    @if($suggestedItems->count() > 0)
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <button type="button" onclick="selectAll()" style="background:none;border:1px solid #d1dce8;border-radius:6px;padding:5px 12px;font-size:0.78rem;cursor:pointer;color:#3a4d6a;font-family:Inter,sans-serif;">Select All</button>
+                        <button type="button" onclick="deselectAll()" style="background:none;border:1px solid #d1dce8;border-radius:6px;padding:5px 12px;font-size:0.78rem;cursor:pointer;color:#3a4d6a;font-family:Inter,sans-serif;">Deselect All</button>
+                    </div>
+                    @endif
+                </div>
+                <div class="card-body">
+                    @forelse($suggestedItems as $index => $item)
+                    @php
+                        $defaultChecked = true;
+                        $reasonDefault  = $item['is_expired'] ? 'expired' : 'damaged';
+                        $colorClass     = $item['is_expired'] ? 'checked' : 'checked-damaged';
+                    @endphp
+                    <div class="suggestion-item {{ $colorClass }}" id="row_{{ $index }}" data-index="{{ $index }}">
+                        <input
+                            type="checkbox"
+                            class="suggestion-checkbox"
+                            id="cb_{{ $index }}"
+                            {{ $defaultChecked ? 'checked' : '' }}
+                            onchange="toggleItem({{ $index }})"
+                        >
+                        <div class="suggestion-info">
+                            <div class="suggestion-name">{{ $item['item_name'] }}</div>
+                            <div class="suggestion-meta">
+                                <span>Supplier: <strong>{{ $item['supplier_name'] }}</strong></span>
+                                <span class="dot">•</span>
+                                <span>Invoice: <strong>{{ $item['invoice_number'] }}</strong></span>
+                                <span class="dot">•</span>
+                                <span>Available Qty: <strong>{{ $item['quantity'] }}</strong></span>
+                                @if($item['is_expired'] && !empty($item['expiry_date']))
+                                    <span class="dot">•</span>
+                                    <span style="font-size:0.78rem;color:#c0392b;">Expired: <strong>{{ $item['expiry_date'] }}</strong></span>
+                                @endif
+                                @if($item['is_expired'])
+                                    <span class="badge-expired">EXPIRED</span>
+                                @endif
+                                @if($item['is_damaged'])
+                                    <span class="badge-damaged">DAMAGED</span>
+                                @endif
+                                {{-- Supplier return policy recommendation --}}
+                                @if($item['is_expired'] || $item['is_damaged'])
+                                    @if($item['accepts_returns'] ?? true)
+                                        <span class="badge-return">✅ Return to Supplier</span>
+                                    @else
+                                        <span class="badge-dispose">⚠ Dispose</span>
+                                    @endif
+                                @endif
+                            </div>
+
+                            <div class="suggestion-controls" id="controls_{{ $index }}">
+                                <div class="ctrl-group">
+                                    <div class="ctrl-label">Return Qty</div>
+                                    <input
+                                        type="number"
+                                        class="form-control qty-input"
+                                        name="items[{{ $index }}][quantity]"
+                                        id="qty_{{ $index }}"
+                                        value="{{ $item['returnable_qty'] }}"
+                                        min="1"
+                                        max="{{ $item['returnable_qty'] }}"
+                                        oninput="updateCounter()"
+                                        required
+                                    >
+                                </div>
+                                <div class="ctrl-group">
+                                    <div class="ctrl-label">Reason</div>
+                                    <select class="form-control" name="items[{{ $index }}][reason]" id="reason_{{ $index }}" onchange="toggleRemark({{ $index }})">
+                                        @if($item['is_expired'])
+                                            <option value="expired" selected>Expired</option>
+                                        @endif
+                                        @if($item['is_damaged'])
+                                            <option value="damaged" {{ !$item['is_expired'] ? 'selected' : '' }}>Damaged</option>
+                                        @endif
+                                    </select>
+                                </div>
+                                {{-- Hidden fields for invoice/line traceability --}}
+                                <input type="hidden" name="items[{{ $index }}][invoice_line_id]" value="{{ $item['invoice_line_id'] }}">
+                                <input type="hidden" name="items[{{ $index }}][invoice_id]" value="{{ $item['invoice_id'] }}">
+                            </div>
+
+                            {{-- Damage remark – shown only when reason = damaged --}}
+                            <div id="remark_wrap_{{ $index }}" style="margin-top:10px; display:{{ !$item['is_expired'] && $item['is_damaged'] ? 'block' : 'none' }};">
+                                <div class="ctrl-label" style="margin-bottom:4px;">Damage Remark <span style="color:#e74c3c;">*</span></div>
+                                <textarea
+                                    class="form-control"
+                                    name="items[{{ $index }}][damage_remark]"
+                                    id="remark_{{ $index }}"
+                                    rows="2"
+                                    placeholder="Describe the damage (e.g. dent on packaging during storage)..."
+                                    style="width:100%;max-width:480px;resize:vertical;"
+                                    {{ !$item['is_expired'] && $item['is_damaged'] ? '' : 'disabled' }}
+                                ></textarea>
+                            </div>
+
+                            {{-- Disabled placeholders when unchecked --}}
+                            <div class="suggestion-controls" id="disabled_{{ $index }}" style="display:none;">
+                                <span style="font-size:0.8rem;color:#9daec5;font-style:italic;">Item not selected for return</span>
+                            </div>
+                        </div>
+                    </div>
+                    @empty
+                    <div class="no-suggestions">
+                        <div class="icon">✅</div>
+                        <p>No expired or damaged items found</p>
+                        <span>All your inventory items are in good condition with valid expiry dates.</span>
+                    </div>
+                    @endforelse
+
+                    @if($suggestedItems->count() > 0)
+                    <div class="counter-bar" id="counterBar">
+                        <div class="counter-item">Selected Items: <strong id="selectedCount">{{ $suggestedItems->count() }}</strong></div>
+                        <div class="counter-item">Total Return Quantity: <strong id="totalQty">{{ $suggestedItems->sum('returnable_qty') }}</strong></div>
+                    </div>
                     @endif
                 </div>
             </div>
-        </div>
-        @else
 
-        @php
-            $mappedInvoices = $invoices->map(function ($invoice) {
-                return [
-                    'id'              => $invoice->id,
-                    'invoice_number'  => $invoice->invoice_number,
-                    'supplier_name'   => optional($invoice->supplier)->name,
-                    'invoice_date'    => optional($invoice->invoice_date)?->format('d M Y'),
-                    'total_amount'    => number_format($invoice->total_amount, 2, '.', ''),
-                    'lines'           => $invoice->lines->map(function ($line) {
-                        $item = is_object($line) ? $line->item : (object)($line['item'] ?? []);
-                        $quantity = is_object($line) ? (int) $line->quantity : (int) ($line['quantity'] ?? 0);
-                        $currentQuantity = (int) ($item->quantity ?? 0);
-                        $damagedQuantity = (int) ($item->damaged_quantity ?? 0);
-                        $isExpired = is_object($item) && method_exists($item, 'isExpired') ? $item->isExpired() : false;
-                        $isDamaged = is_object($item) && method_exists($item, 'isDamaged') ? $item->isDamaged() : false;
-                        $returnableQuantity = min($quantity, $currentQuantity);
-                        if ($isDamaged) {
-                            $returnableQuantity = min($returnableQuantity, $damagedQuantity);
-                        }
-                        return [
-                            'invoice_line_id' => is_object($line) ? $line->id : ($line['id'] ?? ''),
-                            'item_id'         => is_object($line) ? $line->item_id : ($line['item_id'] ?? ''),
-                            'item_name'       => $item->name ?? 'Unknown',
-                            'quantity'        => $quantity,
-                            'current_quantity'=> $currentQuantity,
-                            'damaged_quantity'=> $damagedQuantity,
-                            'returnable_qty'  => $returnableQuantity,
-                            'is_expired'      => $isExpired,
-                            'is_damaged'      => $isDamaged,
-                            'eligible'        => ($isExpired || $isDamaged) && $returnableQuantity > 0,
-                            'damage_reason'   => $item->damage_reason ?? '',
-                            'unit_price'      => is_object($line) ? number_format($line->unit_price, 2, '.', '') : number_format($line['unit_price'] ?? 0, 2, '.', ''),
-                            'uom'             => is_object($line) ? ($line->uom ?? 'unit') : ($line['uom'] ?? 'unit'),
-                        ];
-                    })->values()->toArray(),
-                ];
-            });
-
-            $preselectedInvoiceId = $preselectedInvoice?->id ?? old('invoice_id', '');
-            $preselectedItemId    = $preselectedItem?->id ?? '';
-            $preselectedQty       = $preselectedQuantity ?? ($preselectedItem?->damaged_quantity ?? $preselectedItem?->quantity ?? 0);
-        @endphp
-
-        <form id="returnForm" method="POST" action="{{ route('owner.return-requests.store') }}">
-            @csrf
-
-            {{-- ── Section 1: Invoice & Reason ── --}}
-            <div class="form-card">
-                <div class="card-title">📄 Invoice & Return Details</div>
-                <div class="form-row">
-                    <div class="form-group span-2">
-                        <label class="form-label">Search Invoice <span class="req">*</span></label>
-                        <input type="text" id="invoice_search" class="form-control" placeholder="Search invoice number, supplier, or date…" oninput="filterInvoices()" {{ $preselectedItem ? 'value='.$invoices->where('id', $preselectedInvoiceId)->first()?->invoice_number ?? '' : '' }}>
-                    </div>
-
-                    <div class="form-group span-2">
-                        <label class="form-label">Invoice Reference <span class="req">*</span></label>
-                        <select name="invoice_id" id="invoice_id" class="form-select" required onchange="onInvoiceChange()">
-                            <option value="">— Select an invoice —</option>
-                            @foreach($invoices as $invoice)
-                            <option value="{{ $invoice->id }}"
-                                data-supplier="{{ optional($invoice->supplier)->name }}"
-                                data-date="{{ optional($invoice->invoice_date)?->format('d M Y') }}"
-                                data-amount="{{ number_format($invoice->total_amount, 2) }}"
-                                @selected(old('invoice_id', $preselectedInvoiceId) == $invoice->id)>
-                                {{ $invoice->invoice_number }} | {{ optional($invoice->supplier)->name ?? 'Unknown' }} | {{ optional($invoice->invoice_date)?->format('d M Y') ?? '—' }} | RM{{ number_format($invoice->total_amount, 2) }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
+            {{-- SECTION 2: Return Request Preview --}}
+            <div class="preview-card visible" id="previewCard">
+                <div class="card-header" style="padding:18px 24px;">
+                    <div class="card-title">📋 Return Request Preview</div>
                 </div>
-
-                {{-- Invoice preview strip --}}
-                <div id="invPreview" class="inv-preview" style="display:none">
-                    <div>Invoice: <span id="prev_inv_num">—</span></div>
-                    <div>Supplier: <span id="prev_supplier">—</span></div>
-                    <div>Date: <span id="prev_date">—</span></div>
-                    <div>Total: RM <span id="prev_amount">—</span></div>
+                <div class="preview-warning">
+                    ⚠ Only selected items will be included in the Return Request. Items from different suppliers will create separate Return Requests automatically.
                 </div>
+                <div id="previewBody" style="padding-bottom:8px;"></div>
+            </div>
 
-                <div class="form-row" style="margin-top:16px">
-                    <div class="form-group span-2">
-                        <label class="form-label">Additional Notes <span style="color:#9daec5;font-weight:400">(optional)</span></label>
-                        <input type="text" name="notes" class="form-control" placeholder="e.g. product label shows expiry passed" value="{{ old('notes') }}">
-                    </div>
+            {{-- SECTION 3: Additional Notes --}}
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📝 Additional Notes <span style="font-weight:400;color:#9daec5;font-size:0.78rem;">(Optional)</span></div>
                 </div>
-                <div style="margin-top:8px;font-size:.82rem;color:#5a6a85;line-height:1.5;">
-                    Return reason is selected per line item below, so you can mix expired and damaged items within one request.
+                <div class="card-body">
+                    <textarea name="notes" class="notes-area" placeholder="Add any additional notes or context about this return request..."></textarea>
                 </div>
             </div>
 
-            {{-- ── Section 2: Return Items Table ── --}}
-            <div class="form-card">
-                <div class="card-title">📦 Return Items</div>
-
-                <div id="tableContainer">
-                    <div class="empty-banner" id="emptyState">
-                        <div class="eb-icon">🧾</div>
-                        <div>Select an invoice above to populate the return items table.</div>
-                    </div>
-                </div>
-
-                <div class="total-credit-row" id="totalCreditRow" style="display:none">
-                    <div class="total-credit-label">Total Credit Amount</div>
-                    <div class="total-credit-value">RM <span id="totalCredit">0.00</span></div>
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" id="submitBtn" class="btn-submit" disabled>Create Return Request</button>
-                <a href="{{ route('owner.return-requests.index') }}" class="btn-discard">Discard Draft</a>
+            {{-- SECTION 4: Submit --}}
+            <div class="action-row">
+                <button type="button" class="btn-submit" id="submitBtn" onclick="confirmAndSubmit()">
+                    ↩ Create Return Request
+                </button>
+                <a href="{{ route('owner.return-requests.index') }}" class="btn-cancel">Cancel</a>
             </div>
         </form>
-        @endif
     </div>
-</div>
+    </div>
+@endsection
 
+@push('scripts')
 <script>
-const ALL_INVOICES = @json($mappedInvoices ?? collect([]));
-const PRESELECTED_ITEM_ID = {{ $preselectedItemId ?? 'null' }};
-const PRESELECTED_QTY     = {{ $preselectedQty ?? 0 }};
+// Item data from server
+const items = @json($suggestedItems);
 
-function fmt(v) { return parseFloat(v||0).toFixed(2); }
+function toggleItem(index) {
+    const cb       = document.getElementById(`cb_${index}`);
+    const row      = document.getElementById(`row_${index}`);
+    const controls = document.getElementById(`controls_${index}`);
+    const disabled = document.getElementById(`disabled_${index}`);
+    const remarkWrap = document.getElementById(`remark_wrap_${index}`);
+    const remarkEl  = document.getElementById(`remark_${index}`);
+    const isChecked = cb.checked;
 
-function filterInvoices() {
-    const q   = document.getElementById('invoice_search').value.toLowerCase();
-    const sel = document.getElementById('invoice_id');
-    const all = Array.from(sel.options);
-    sel.innerHTML = '';
-    all.forEach(opt => {
-        if (!opt.value || opt.textContent.toLowerCase().includes(q)) {
-            sel.appendChild(opt);
-        }
+    // Toggle visual state
+    const isExpired = items[index] && items[index].is_expired;
+    const isDamaged = items[index] && items[index].is_damaged;
+    if (isChecked) {
+        row.className = `suggestion-item ${isDamaged && !isExpired ? 'checked-damaged' : 'checked'}`;
+    } else {
+        row.className = 'suggestion-item';
+    }
+
+    // Show/hide controls
+    controls.style.display = isChecked ? 'flex' : 'none';
+    disabled.style.display  = isChecked ? 'none' : 'flex';
+
+    // Enable/disable inputs to prevent them from being submitted
+    controls.querySelectorAll('input, select').forEach(el => el.disabled = !isChecked);
+
+    // Handle remark wrap
+    if (remarkWrap) {
+        const reasonEl = document.getElementById(`reason_${index}`);
+        const isDamagedReason = reasonEl && reasonEl.value === 'damaged';
+        remarkWrap.style.display = isChecked && isDamagedReason ? 'block' : 'none';
+        if (remarkEl) remarkEl.disabled = !(isChecked && isDamagedReason);
+    }
+
+    updateCounter();
+    updatePreview();
+}
+
+function toggleRemark(index) {
+    const reasonEl   = document.getElementById(`reason_${index}`);
+    const remarkWrap = document.getElementById(`remark_wrap_${index}`);
+    const remarkEl   = document.getElementById(`remark_${index}`);
+    if (!remarkWrap || !remarkEl) return;
+    const isDamaged = reasonEl && reasonEl.value === 'damaged';
+    remarkWrap.style.display = isDamaged ? 'block' : 'none';
+    remarkEl.disabled = !isDamaged;
+    if (!isDamaged) remarkEl.value = '';
+}
+
+function selectAll() {
+    items.forEach((_, i) => {
+        const cb = document.getElementById(`cb_${i}`);
+        if (!cb.checked) { cb.checked = true; toggleItem(i); }
     });
 }
 
-function onInvoiceChange() {
-    const id  = document.getElementById('invoice_id').value;
-    const inv = ALL_INVOICES.find(i => String(i.id) === String(id));
-
-    const preview = document.getElementById('invPreview');
-    if (inv) {
-        document.getElementById('prev_inv_num').textContent  = inv.invoice_number;
-        document.getElementById('prev_supplier').textContent = inv.supplier_name || '—';
-        document.getElementById('prev_date').textContent     = inv.invoice_date   || '—';
-        document.getElementById('prev_amount').textContent   = inv.total_amount   || '—';
-        preview.style.display = 'flex';
-    } else {
-        preview.style.display = 'none';
-    }
-
-    renderTable(inv);
-    checkSubmitReady();
+function deselectAll() {
+    items.forEach((_, i) => {
+        const cb = document.getElementById(`cb_${i}`);
+        if (cb.checked) { cb.checked = false; toggleItem(i); }
+    });
 }
 
-function renderTable(inv) {
-    const container = document.getElementById('tableContainer');
-    const totalRow  = document.getElementById('totalCreditRow');
+function updateCounter() {
+    let selectedCount = 0, totalQty = 0;
+    items.forEach((item, i) => {
+        const cb  = document.getElementById(`cb_${i}`);
+        const qty = document.getElementById(`qty_${i}`);
+        if (cb && cb.checked) {
+            selectedCount++;
+            totalQty += parseInt(qty?.value || 0, 10);
+        }
+    });
+    const scEl = document.getElementById('selectedCount');
+    const tqEl = document.getElementById('totalQty');
+    const sbBtn = document.getElementById('submitBtn');
+    if (scEl) scEl.textContent = selectedCount;
+    if (tqEl) tqEl.textContent = totalQty;
+    if (sbBtn) sbBtn.disabled = selectedCount === 0;
+    updatePreview();
+}
 
-    if (!inv || !inv.lines || inv.lines.length === 0) {
-        container.innerHTML = `<div class="empty-banner" id="emptyState">
-            <div class="eb-icon">📄</div>
-            <div>${!inv ? 'Select an invoice above to populate the return items table.' : '<strong>No line items found for this invoice.</strong>'}</div>
+function updatePreview() {
+    const groups = {};
+    items.forEach((item, i) => {
+        const cb  = document.getElementById(`cb_${i}`);
+        const qty = document.getElementById(`qty_${i}`);
+        if (!cb || !cb.checked) return;
+        const key = item.invoice_id;
+        if (!groups[key]) {
+            groups[key] = {
+                supplier: item.supplier_name,
+                invoice:  item.invoice_number,
+                lines:    []
+            };
+        }
+        groups[key].lines.push({
+            name:   item.item_name,
+            qty:    parseInt(qty?.value || 0, 10),
+            uom:    item.uom,
+            reason: item.is_expired ? 'Expired' : 'Damaged'
+        });
+    });
+
+    const body    = document.getElementById('previewBody');
+    const card    = document.getElementById('previewCard');
+    const keys    = Object.keys(groups);
+
+    if (keys.length === 0) {
+        card.classList.remove('visible');
+        return;
+    }
+    card.classList.add('visible');
+
+    let html = '';
+    keys.forEach((key, gi) => {
+        const g = groups[key];
+        html += `<div class="preview-group">
+            <div class="preview-supplier">Supplier: ${g.supplier}</div>
+            <div class="preview-invoice">Invoice: ${g.invoice}</div>
+            ${g.lines.map(l => `
+                <div class="preview-item">
+                    <span>• ${l.name}</span>
+                    <span style="color:#5a6a85;">Qty ${l.qty} ${l.uom} — <em>${l.reason}</em></span>
+                </div>
+            `).join('')}
         </div>`;
-        totalRow.style.display = 'none';
+        if (gi < keys.length - 1) html += '<div class="preview-separator"></div>';
+    });
+
+    body.innerHTML = html;
+}
+
+function confirmAndSubmit() {
+    const checked = items.filter((_, i) => document.getElementById(`cb_${i}`)?.checked);
+    if (checked.length === 0) {
+        alert('Please select at least one item to return.');
         return;
     }
 
-    let html = `<div class="table-wrap"><table class="items-table">
-        <thead><tr>
-            <th style="text-align:left">Item</th>
-            <th style="text-align:right">Remaining Qty</th>
-            <th style="text-align:center">Return Qty</th>
-            <th style="text-align:center">Reason</th>
-            <th style="text-align:right">Unit Price (RM)</th>
-            <th style="text-align:right">Subtotal (RM)</th>
-        </tr></thead>
-        <tbody id="linesBody">`;
-
-    inv.lines.forEach((line, idx) => {
-        const returnableQty = parseInt(line.returnable_qty || 0);
-        const eligible = !!line.eligible;
-        const defaultQty = (PRESELECTED_ITEM_ID && String(line.item_id) === String(PRESELECTED_ITEM_ID))
-            ? Math.min(parseInt(PRESELECTED_QTY || 0), returnableQty)
-            : 0;
-        const defaultReason = line.is_damaged ? 'damaged' : (line.is_expired ? 'expired' : '');
-        const statusText = eligible
-            ? [line.is_expired ? 'Expired' : null, line.is_damaged ? `Damaged (${line.damaged_quantity || 0} units)` : null].filter(Boolean).join(' / ')
-            : 'Not expired or damaged';
-        const disabled = eligible ? '' : 'disabled';
-
-        html += `<tr style="${eligible ? '' : 'opacity:.55'}">
-            <td>
-                <input type="hidden" name="items[${idx}][invoice_line_id]" value="${line.invoice_line_id}">
-                <strong>${line.item_name || 'Unknown Item'}</strong>
-                <div style="font-size:.75rem;color:#9daec5">${line.uom} · ${statusText}</div>
-            </td>
-            <td style="text-align:right;font-weight:600">${returnableQty}</td>
-            <td style="text-align:center">
-                <input type="number" name="items[${idx}][quantity]"
-                    class="qty-input" id="qty_${idx}"
-                    value="${eligible ? defaultQty : 0}" min="0" max="${returnableQty}"
-                    data-unit-price="${line.unit_price}"
-                    data-idx="${idx}"
-                    ${disabled}
-                    oninput="updateRow(${idx}); checkSubmitReady()">
-                <div style="font-size:.68rem;color:#9daec5;margin-top:3px">${eligible ? `max ${returnableQty}` : 'not eligible'}</div>
-            </td>
-            <td style="text-align:center">
-                <select name="items[${idx}][reason]" id="reason_${idx}" class="form-select" onchange="checkSubmitReady()" ${disabled} style="min-width:140px;padding:8px 10px;border-radius:7px;border:1px solid #d1dce8;">
-                    <option value="">Select reason</option>
-                    ${line.is_expired ? `<option value="expired" ${defaultReason === 'expired' ? 'selected' : ''}>Expired</option>` : ''}
-                    ${line.is_damaged ? `<option value="damaged" ${defaultReason === 'damaged' ? 'selected' : ''}>Damaged</option>` : ''}
-                </select>
-            </td>
-            <td style="text-align:right">RM ${fmt(line.unit_price)}</td>
-            <td style="text-align:right;font-weight:700" id="sub_${idx}">RM ${fmt((eligible ? defaultQty : 0) * parseFloat(line.unit_price))}</td>
-        </tr>`;
-    });
-
-    html += `</tbody></table></div>`;
-    container.innerHTML = html;
-    totalRow.style.display = 'flex';
-    updateTotal();
-}
-
-function updateRow(idx) {
-    const input     = document.getElementById('qty_' + idx);
-    const max       = parseInt(input.getAttribute('max'));
-    const qty       = parseInt(input.value) || 0;
-    const unitPrice = parseFloat(input.dataset.unitPrice) || 0;
-
-    if (qty < 0) input.value = 0;
-    if (qty > max) { input.value = max; input.classList.add('error'); }
-    else           { input.classList.remove('error'); }
-
-    const subtotal = Math.max(0, parseInt(input.value)||0) * unitPrice;
-    const subEl    = document.getElementById('sub_' + idx);
-    if (subEl) subEl.textContent = 'RM ' + fmt(subtotal);
-
-    updateTotal();
-}
-
-function updateTotal() {
-    let total = 0;
-    document.querySelectorAll('[id^="sub_"]').forEach(el => {
-        total += parseFloat(el.textContent.replace('RM','').trim()) || 0;
-    });
-    const el = document.getElementById('totalCredit');
-    if (el) el.textContent = fmt(total);
-}
-
-function checkSubmitReady() {
-    const invoiceSelected = !!document.getElementById('invoice_id').value;
-    const qtyInputs = Array.from(document.querySelectorAll('.qty-input'));
-    const anyQty = qtyInputs.some(i => parseInt(i.value) > 0);
-    const validReasons = qtyInputs.every(i => {
-        const qty = parseInt(i.value) || 0;
-        const reasonEl = document.getElementById('reason_' + i.dataset.idx);
-        if (qty <= 0) {
-            return true;
+    // Validate quantities and damage remarks
+    for (let i = 0; i < items.length; i++) {
+        const cb  = document.getElementById(`cb_${i}`);
+        const qty = document.getElementById(`qty_${i}`);
+        const reason = document.getElementById(`reason_${i}`);
+        const remark = document.getElementById(`remark_${i}`);
+        if (cb?.checked) {
+            const q = parseInt(qty?.value || 0, 10);
+            if (q <= 0) {
+                alert(`Return quantity for "${items[i].item_name}" must be at least 1.`);
+                qty.focus();
+                return;
+            }
+            if (q > items[i].returnable_qty) {
+                alert(`Return quantity for "${items[i].item_name}" cannot exceed ${items[i].returnable_qty}.`);
+                qty.focus();
+                return;
+            }
+            if (reason?.value === 'damaged' && remark && !remark.value.trim()) {
+                alert(`A damage remark is required for "${items[i].item_name}" (damaged reason).`);
+                remark.focus();
+                return;
+            }
         }
-        return reasonEl && !!reasonEl.value;
+    }
+
+    // Group by supplier for confirmation message
+    const groups = {};
+    items.forEach((item, i) => {
+        const cb = document.getElementById(`cb_${i}`);
+        if (cb?.checked) {
+            const s = item.supplier_name;
+            groups[s] = (groups[s] || 0) + 1;
+        }
     });
-    document.getElementById('submitBtn').disabled = !(invoiceSelected && anyQty && validReasons);
+
+    const supplierCount = Object.keys(groups).length;
+    const rrCount       = supplierCount > 1 ? `${supplierCount} separate Return Requests (one per supplier)` : '1 Return Request';
+    const msg = `You are about to create ${rrCount}.\n\nSuppliers:\n` +
+        Object.entries(groups).map(([s, c]) => `  • ${s}: ${c} item(s)`).join('\n') +
+        '\n\nProceed?';
+
+    if (confirm(msg)) {
+        document.getElementById('returnForm').submit();
+    }
 }
 
-// Init on load
-document.addEventListener('DOMContentLoaded', function() {
-    const sel = document.getElementById('invoice_id');
-    if (sel && sel.value) {
-        onInvoiceChange();
-    }
-    document.getElementById('reason')?.addEventListener('change', checkSubmitReady);
+// Initialise on load
+document.addEventListener('DOMContentLoaded', function () {
+    updatePreview();
+    updateCounter();
 });
 </script>
-</body>
-</html>
+@endpush

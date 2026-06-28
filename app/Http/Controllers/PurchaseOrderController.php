@@ -10,6 +10,8 @@ use App\Models\PurchaseOrderItem;
 use App\Models\InvoiceLine;
 use App\Models\ReturnRequest;
 use App\Models\Supplier;
+use App\Services\EmailNotificationService;
+use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Setting;
@@ -24,7 +26,7 @@ class PurchaseOrderController extends Controller
 
     public function getSupplierCreditNotes(\App\Models\Supplier $supplier)
     {
-        $creditNotes = \App\Models\CreditNote::with('returnRequest.item')
+        $creditNotes = \App\Models\CreditNote::with('returnRequest.lines.item')
             ->where('supplier_id', $supplier->id)
             ->whereIn('status', ['Unused', 'Partially Used'])
             ->where('remaining_balance', '>', 0)
@@ -138,11 +140,13 @@ class PurchaseOrderController extends Controller
         $this->normalizeItemsPayload($request);
 
         $request->validate([
-            'supplier_id'          => 'required|exists:suppliers,id',
-            'notes'                => 'nullable|string|max:1000',
-            'items'                => 'required|array|min:1',
-            'items.*.item_id'      => 'required|exists:items,id',
-            'items.*.quantity'     => 'required|integer|min:1',
+            'supplier_id'             => 'required|exists:suppliers,id',
+            'notes'                   => 'nullable|string|max:1000',
+            'items'                   => 'required|array|min:1',
+            'items.*.item_id'         => 'required|exists:items,id',
+            'items.*.quantity'        => 'required|integer|min:1',
+            'applied_credit_notes'    => 'nullable|array',
+            'applied_credit_notes.*'  => 'numeric|min:0',
         ]);
 
         $supplier = Supplier::findOrFail($request->supplier_id);
@@ -184,14 +188,57 @@ class PurchaseOrderController extends Controller
                 $poNumber = 'PO-' . str_pad($nextIndex, 4, '0', STR_PAD_LEFT);
             }
 
+            $finalAmount = $totalAmount;
+            $creditDeducted = 0;
+            $appliedCreditNotesJson = null;
+            $appliedNotesArray = [];
+
+            if ($request->filled('applied_credit_notes') && is_array($request->applied_credit_notes)) {
+                foreach ($request->applied_credit_notes as $cnDbId => $amountStr) {
+                    $requestedDeduction = (float) $amountStr;
+                    if ($requestedDeduction <= 0) continue;
+
+                    $cn = \App\Models\CreditNote::where('id', $cnDbId)
+                            ->where('supplier_id', $supplier->id)
+                            ->where('remaining_balance', '>', 0)
+                            ->lockForUpdate() // Avoid race condition on balance
+                            ->first();
+
+                    if ($cn && $finalAmount > 0) {
+                        $deduction = min($finalAmount, $requestedDeduction, (float)$cn->remaining_balance);
+                        if ($deduction > 0) {
+                            $creditDeducted += $deduction;
+                            $finalAmount -= $deduction;
+                            $appliedNotesArray[] = ['id' => $cn->id, 'amount' => $deduction];
+
+                            // Update credit note balance
+                            $cn->remaining_balance -= $deduction;
+                            if ($cn->remaining_balance <= 0.001) {
+                                $cn->status = 'Used';
+                            } else {
+                                $cn->status = 'Partially Used';
+                            }
+                            $cn->save();
+                        }
+                    }
+                }
+            }
+
+            if (!empty($appliedNotesArray)) {
+                $appliedCreditNotesJson = json_encode($appliedNotesArray);
+            }
+
             $po = PurchaseOrder::create([
-                'po_number'    => $poNumber,
-                'supplier_id'  => $request->supplier_id,
-                'order_date'   => now(),
-                'status'       => 'Pending',
-                'notes'        => $request->notes,
-                'total_amount' => $totalAmount,
-                'final_amount' => $totalAmount,
+                'po_number'           => $poNumber,
+                'supplier_id'         => $request->supplier_id,
+                'order_date'          => now(),
+                'status'              => 'Pending',
+                'notes'               => $request->notes,
+                'total_amount'        => $totalAmount,
+                'credit_deducted'     => $creditDeducted,
+                'final_amount'        => $finalAmount,
+                'applied_credit_notes'=> $appliedCreditNotesJson,
+                'created_by'          => auth()->id(),
             ]);
 
             foreach ($lines as $line) {
@@ -205,13 +252,21 @@ class PurchaseOrderController extends Controller
 
         // Notify supplier
         if ($supplier->user) {
+            $firstItemName = optional($po->orderItems->first())->item->name ?? 'Multiple Items';
+            $itemName = $po->orderItems->count() > 1 
+                ? $firstItemName . ' (+' . ($po->orderItems->count() - 1) . ' more)'
+                : $firstItemName;
+            $quantity = $po->orderItems->sum('quantity');
+
             Notification::send(
                 $supplier->user,
                 'purchase_order_created',
                 'A new purchase order ' . $po->po_number . ' has been created. Please log in to review.',
                 [
                     'po_number'  => $po->po_number,
-                    'login_url'  => route('login'),
+                    'item_name'  => $itemName,
+                    'quantity'   => $quantity,
+                    'login_url'  => $supplier->portal_link ?? route('supplier.login'),
                 ]
             );
         }
@@ -232,6 +287,13 @@ class PurchaseOrderController extends Controller
             }
         } catch (\Throwable $e) {
             Log::channel('whatsapp_alerts')->error('Failed to send purchase order whatsapp', ['po' => $po->po_number, 'error' => $e->getMessage()]);
+        }
+
+        // Send Email Notification to Supplier
+        try {
+            (new \App\Services\EmailNotificationService)->sendPurchaseOrderCreatedToSupplier($po);
+        } catch (\Throwable $e) {
+            Log::error('Supplier PO Created email failed', ['po' => $po->po_number, 'error' => $e->getMessage()]);
         }
 
         return redirect()->route('owner.purchase-orders.index')
@@ -314,8 +376,81 @@ class PurchaseOrderController extends Controller
             $this->syncLegacyFields($purchaseOrder, $lines);
         });
 
+        // Send Email Notification to Supplier for PO Update
+        try {
+            (new \App\Services\EmailNotificationService)->sendPurchaseOrderUpdatedToSupplier($purchaseOrder);
+        } catch (\Throwable $e) {
+            Log::error('Supplier PO Updated email failed', ['po' => $purchaseOrder->po_number, 'error' => $e->getMessage()]);
+        }
+
         return redirect()->route('owner.purchase-orders.show', $purchaseOrder)
             ->with('success', 'Purchase order updated successfully.');
+    }
+
+    public function approve(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        if ($purchaseOrder->status !== 'Pending') {
+            return back()->with('error', 'Only Pending purchase orders can be approved.');
+        }
+
+        $request->validate([
+            'delivery_date' => 'nullable|date|after_or_equal:today',
+        ]);
+
+        $purchaseOrder->update([
+            'status'        => 'Approved',
+            'delivery_date' => $request->delivery_date,
+        ]);
+
+
+
+        // In-app notification to supplier
+        $supplier = $purchaseOrder->supplier;
+        if ($supplier && $supplier->user) {
+            Notification::send(
+                $supplier->user,
+                'po_approved',
+                'Purchase Order #' . $purchaseOrder->po_number . ' has been approved.',
+                ['po_number' => $purchaseOrder->po_number]
+            );
+        }
+
+        return redirect()
+            ->route('owner.purchase-orders.show', $purchaseOrder)
+            ->with('success', 'Purchase order ' . $purchaseOrder->po_number . ' has been approved.');
+    }
+
+    public function reject(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        if ($purchaseOrder->status !== 'Pending') {
+            return back()->with('error', 'Only Pending purchase orders can be rejected.');
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $purchaseOrder->update([
+            'status' => 'Rejected',
+            'notes'  => $request->rejection_reason,
+        ]);
+
+
+
+        // In-app notification to supplier
+        $supplier = $purchaseOrder->supplier;
+        if ($supplier && $supplier->user) {
+            Notification::send(
+                $supplier->user,
+                'po_rejected',
+                'Purchase Order #' . $purchaseOrder->po_number . ' has been rejected.',
+                ['po_number' => $purchaseOrder->po_number, 'reason' => $request->rejection_reason]
+            );
+        }
+
+        return redirect()
+            ->route('owner.purchase-orders.show', $purchaseOrder)
+            ->with('success', 'Purchase order ' . $purchaseOrder->po_number . ' has been rejected.');
     }
 
     public function generateInvoiceForPurchaseOrder(PurchaseOrder $purchaseOrder): Invoice
@@ -349,7 +484,7 @@ class PurchaseOrderController extends Controller
             'invoice_date'      => $today,
             'total_amount'      => $invoiceTotal,
             'payment_due_date'  => $dueDate,
-            'status'            => 'Active',
+            'status'            => 'Unpaid',
             'source'            => 'auto',
         ]);
 
@@ -447,9 +582,27 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            // 3 — Removed: Invoice generation is now handled manually by the supplier.
+            // 3 — Auto-generate the invoice once goods are received
+            // (Previously removed — re-added to trigger invoice email.)
+            $invoice = app(self::class)->generateInvoiceForPurchaseOrder($purchaseOrder);
 
-            // 4 — Notify supplier
+            // 4 — Notify supplier by email that their invoice has been generated
+            if ($invoice) {
+                try {
+                    $supplierEmail = optional($purchaseOrder->supplier)->email ?? null;
+                    $supplierName  = optional($purchaseOrder->supplier)->name ?? 'Supplier';
+                    (new EmailNotificationService)->sendInvoice(
+                        $supplierEmail,
+                        $supplierName,
+                        $invoice->invoice_number
+                        // PDF path is omitted here — invoice PDFs are generated on-demand, not stored to disk
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Invoice email failed', ['invoice' => $invoice->invoice_number ?? 'N/A', 'error' => $e->getMessage()]);
+                }
+            }
+
+            // 5 — Notify supplier via in-app notification
             $supplier = $purchaseOrder->supplier;
             if ($supplier && $supplier->user) {
                 Notification::send(
@@ -497,7 +650,12 @@ class PurchaseOrderController extends Controller
                 if ($supplierUser) {
                     Notification::send($supplierUser, 'purchase_order_created',
                         'A new purchase order has been created.',
-                        ['po_number' => $po->po_number]);
+                        [
+                            'po_number' => $po->po_number,
+                            'item_name' => $item->name,
+                            'quantity'  => $qty,
+                            'login_url' => optional($item->supplier)->portal_link ?? route('supplier.login'),
+                        ]);
                 }
             }
         }
@@ -548,5 +706,30 @@ class PurchaseOrderController extends Controller
             ]);
         }
         return response()->json(['status' => 'pending']);
+    }
+    /**
+     * Generate invoices for received POs that have no invoice yet.
+     * One-time fix for POs received before the auto-invoice feature.
+     */
+    public function generateMissingInvoices()
+    {
+        $pos = PurchaseOrder::where('status', 'received')
+            ->whereDoesntHave('invoice')
+            ->get();
+
+        foreach ($pos as $po) {
+            Invoice::create([
+                'invoice_number'    => 'INV-' . $po->po_number,
+                'purchase_order_id' => $po->id,
+                'supplier_id'       => $po->supplier_id,
+                'invoice_date'      => $po->updated_at->toDateString(),
+                'total_amount'      => $po->final_amount ?? $po->total_amount,
+                'payment_due_date'  => $po->updated_at->addDays(30)->toDateString(),
+                'status'            => 'Unpaid',
+            ]);
+        }
+
+        return redirect()->route('owner.invoices.index')
+            ->with('success', 'Missing invoices generated successfully.');
     }
 }

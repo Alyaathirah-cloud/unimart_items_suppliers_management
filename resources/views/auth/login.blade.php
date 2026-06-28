@@ -246,6 +246,12 @@
     <div class="login-card">
         <h1 class="card-title">Sign In</h1>
 
+        @if (session('status'))
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 16px; color: #047857; font-size: 0.85rem; margin-bottom: 1.5rem; font-weight: 500;">
+                {{ session('status') }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ $loginAction ?? route('login') }}">
             @csrf
 
@@ -272,6 +278,28 @@
                     >
                 </div>
                 @error('login')
+                    <div class="invalid-message">{{ $message }}</div>
+                @enderror
+            </div>
+
+            {{-- Role Selection --}}
+            <div class="field-group">
+                <label class="field-label" for="role">Role</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </span>
+                    <select id="role" name="role" class="form-input @error('role') is-invalid @enderror" required style="-webkit-appearance: none; -moz-appearance: none; appearance: none; cursor: pointer;">
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="owner" {{ old('role') == 'owner' ? 'selected' : '' }}>Owner</option>
+                        <option value="staff" {{ old('role') == 'staff' ? 'selected' : '' }}>Staff</option>
+                        <option value="supplier" {{ old('role') == 'supplier' ? 'selected' : '' }}>Supplier</option>
+                    </select>
+                </div>
+                @error('role')
                     <div class="invalid-message">{{ $message }}</div>
                 @enderror
             </div>

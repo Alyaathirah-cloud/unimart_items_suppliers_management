@@ -101,6 +101,27 @@
         .flash-success{background:#e8f8f0;color:#1d8348;border:1px solid #a9dfbf}
         .flash-error{background:#fdedec;color:#c0392b;border:1px solid #f5b7b1}
         .empty-state{padding:48px;text-align:center;color:#9daec5;font-size:.9rem}
+        /* Modal Styles */
+        .invoice-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:9999; }
+        .invoice-modal { background:#2a2a2a; color:#fff; border-radius:12px; width:100%; max-width:500px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:'Inter',sans-serif; }
+        .invoice-modal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+        .invoice-modal-title { font-size:1.2rem; font-weight:700; margin-bottom:12px; }
+        .invoice-modal-close { background:none; border:none; color:#a0a0a0; font-size:1.2rem; cursor:pointer; }
+        .invoice-modal-close:hover { color:#fff; }
+        .invoice-modal-brand { font-size:1.3rem; font-weight:800; margin-bottom:2px; }
+        .invoice-modal-subbrand { color:#a0a0a0; font-size:0.85rem; margin-bottom:24px; border-bottom:1px solid #444; padding-bottom:16px; }
+        .invoice-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+        .invoice-modal-label { color:#a0a0a0; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px; }
+        .invoice-modal-val { font-size:0.95rem; font-weight:600; line-height:1.4; }
+        .invoice-modal-val-sub { color:#a0a0a0; font-size:0.85rem; }
+        .invoice-modal-total-row { display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-top:1px solid #444; margin-bottom:16px; }
+        .invoice-modal-total-label { font-size:1.05rem; font-weight:600; }
+        .invoice-modal-total-val { font-size:1.4rem; font-weight:700; }
+        .invoice-modal-disclaimer { background:#1f1f1f; color:#a0a0a0; padding:12px; border-radius:6px; font-size:0.8rem; margin-bottom:24px; display:flex; gap:8px; align-items:flex-start; }
+        .invoice-modal-footer { display:flex; gap:12px; }
+        .invoice-modal-btn { flex:1; padding:10px; border-radius:6px; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; transition:background 0.2s; }
+        .invoice-modal-btn-outline { background:transparent; border:1px solid #555; color:#fff; }
+        .invoice-modal-btn-outline:hover { background:#333; }
     </style>
 </head>
 <body>
@@ -115,19 +136,18 @@
             <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" placeholder="Search orders, items...">
         </div>
-        <div class="topbar-icons">
-            <button class="icon-btn">🔔<span class="badge-dot"></span></button>
-            <button class="icon-btn">⚙</button>
-            <button class="icon-btn">⋯</button>
-            <div class="topbar-profile">
-                <div>
-                    <div class="profile-name">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf
-                        <button type="submit" class="profile-sub">Logout</button>
-                    </form>
-                </div>
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name,0,1)) }}</div>
-            </div>
+        <div class="topbar-right" style="margin-left: auto; display: flex; align-items: center; gap: 20px;">
+            <!-- Notification Bell -->
+            <a href="{{ route('supplier.notifications.index') }}" style="text-decoration:none;position:relative;">
+                <span style="font-size:1.2rem;">🔔</span>
+                @if(auth()->user()->unreadNotifications->count() > 0)
+                    <span style="position:absolute;top:-2px;right:-2px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:700;padding:2px 5px;border-radius:10px;">
+                        {{ auth()->user()->unreadNotifications->count() }}
+                    </span>
+                @endif
+            </a>
+            
+            @include('supplier.components.topbar-profile')
         </div>
     </div>
 
@@ -148,17 +168,17 @@
 
         <!-- Stats -->
         <div class="stats-row">
-            <div class="stat-card">
+            <div class="stat-card" style="border-left: 4px solid #f39c12;">
                 <div class="stat-label">Pending</div>
                 <div class="stat-value orange">{{ $orders->where('status','Pending')->count() }}</div>
                 <div class="stat-hint">Awaiting your response</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" style="border-left: 4px solid #27ae60;">
                 <div class="stat-label">Approved</div>
                 <div class="stat-value green">{{ $orders->where('status','Approved')->count() }}</div>
                 <div class="stat-hint">In processing</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" style="border-left: 4px solid #e74c3c;">
                 <div class="stat-label">Rejected</div>
                 <div class="stat-value red">{{ $orders->where('status','Rejected')->count() }}</div>
                 <div class="stat-hint">Declined orders</div>
@@ -233,21 +253,33 @@
                                 @endif
                             </td>
                             <td>RM {{ number_format($order->total_amount ?? 0, 2) }}</td>
-                            <td><span class="badge {{ $cls }}">{{ ucfirst($s) }}</span></td>
                             <td>
+                                <span class="badge {{ $cls }}">{{ ucfirst($s) }}</span>
+                                <div style="font-size:0.7rem;color:#9daec5;margin-top:4px;">
+                                    {{ $order->updated_at ? $order->updated_at->format('M d, g:i A') : '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display:flex; flex-direction:column; gap:8px;">
                                     @if($s === 'Pending')
                                         <button class="btn btn-approve" onclick="toggleRow('approve-{{ $order->id }}')">✓ Approve</button>
                                         <button class="btn btn-reject" onclick="toggleRow('reject-{{ $order->id }}')">✕ Reject</button>
-                                    @elseif($s === 'Approved' || $s === 'Received')
-                                        @if($s === 'Approved' && !$hasDelivery)
-                                            <button class="btn btn-delivery" onclick="toggleRow('delivery-{{ $order->id }}')">📅 Set Delivery</button>
-                                        @endif
-                                        @if($order->invoice)
-                                            <a href="{{ route('supplier.invoices.show', $order->invoice) }}" class="btn" style="border: 1px solid #d1dce8; color: #3a4d6a; background: #fff;">👁 View Invoice</a>
-                                        @endif
-                                    @else
-                                        <span style="color:#9daec5;font-size:.82rem">—</span>
+                                    @elseif($s === 'Approved' && !$hasDelivery)
+                                        <button class="btn btn-delivery" onclick="toggleRow('delivery-{{ $order->id }}')">📅 Set Delivery</button>
                                     @endif
+
+                                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                        <a href="{{ route('supplier.purchase-orders.show', $order) }}" class="btn" style="border: 1px solid #a9cce3; color: #2980b9; background: #ebf5fb; flex:1; display:flex; justify-content:center; align-items:center; gap:4px; padding:6px 10px; font-size:0.8rem; font-weight:600; white-space:nowrap;">
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                            View PO
+                                        </a>
+                                        @if($order->invoice)
+                                            <button type="button" class="btn" style="border: 1px solid #d7bde2; color: #8e44ad; background: #f4ecf7; flex:1; display:flex; justify-content:center; align-items:center; gap:4px; padding:6px 10px; font-size:0.8rem; font-weight:600; white-space:nowrap;" onclick="document.getElementById('modal-invoice-{{ $order->invoice->id }}').style.display='flex'">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2H4z"></path><line x1="16" y1="6" x2="8" y2="6"></line><line x1="16" y1="10" x2="8" y2="10"></line><line x1="12" y1="14" x2="8" y2="14"></line></svg>
+                                                View Invoice
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -370,6 +402,81 @@
         </div>
     </div>
 </div>
+
+@foreach($orders as $order)
+    @if($order->invoice)
+        <div id="modal-invoice-{{ $order->invoice->id }}" class="invoice-modal-overlay">
+            <div class="invoice-modal">
+                <div class="invoice-modal-header">
+                    <div class="invoice-modal-title">Invoice — {{ $order->invoice->invoice_number }}</div>
+                    <button type="button" class="invoice-modal-close" onclick="document.getElementById('modal-invoice-{{ $order->invoice->id }}').style.display='none'">✕</button>
+                </div>
+                <div class="invoice-modal-brand">22UniMart</div>
+                <div class="invoice-modal-subbrand">Inventory Management System · Kuala Lumpur, Malaysia</div>
+
+                <div class="invoice-modal-grid">
+                    <div>
+                        <div class="invoice-modal-label">Supplier (From)</div>
+                        <div class="invoice-modal-val">{{ optional($order->supplier)->name }}</div>
+                        <div class="invoice-modal-val-sub">{{ optional($order->supplier)->contact_email }}</div>
+                        <div class="invoice-modal-val-sub">{{ optional($order->supplier)->contact_phone }}</div>
+                    </div>
+                    <div>
+                        <div class="invoice-modal-label">Buyer (Bill To)</div>
+                        <div class="invoice-modal-val">{{ optional($order->user)->name ?? 'Owner' }}</div>
+                        <div class="invoice-modal-val-sub">{{ optional($order->user)->email ?? 'owner@22unimart.com' }}</div>
+                        <div class="invoice-modal-val-sub">22UniMart, {{ ucfirst(optional($order->user)->role ?? 'Owner') }}</div>
+                    </div>
+                    <div>
+                        <div class="invoice-modal-label">Invoice Number</div>
+                        <div class="invoice-modal-val">{{ $order->invoice->invoice_number }}</div>
+                    </div>
+                    <div>
+                        <div class="invoice-modal-label">PO Reference</div>
+                        <div class="invoice-modal-val">{{ $order->po_number }}</div>
+                    </div>
+                    <div>
+                        <div class="invoice-modal-label">Invoice Date</div>
+                        <div class="invoice-modal-val">{{ $order->invoice->invoice_date->format('M d, Y') }}</div>
+                    </div>
+                    <div>
+                        <div class="invoice-modal-label">Status</div>
+                        @php
+                            $status = $order->invoice->computeStatus();
+                            $statusColor = $status === 'Paid' ? '#1d8348' : ($status === 'Settled' ? '#2980b9' : '#d4870a');
+                            $statusBg = $status === 'Paid' ? '#e8f8f0' : ($status === 'Settled' ? '#e8f4fd' : '#fef3e2');
+                        @endphp
+                        <div style="display:inline-block; padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:700; background:{{ $statusBg }}; color:{{ $statusColor }};">
+                            @if($status === 'Paid') ✓ @endif {{ $status }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="invoice-modal-total-row">
+                    <div class="invoice-modal-total-label">Total amount</div>
+                    <div class="invoice-modal-total-val">RM {{ number_format($order->invoice->total_amount, 2) }}</div>
+                </div>
+
+                <div class="invoice-modal-disclaimer">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                    <div>This is a system-generated invoice for record-keeping. It is read-only and cannot be edited.</div>
+                </div>
+
+                <div class="invoice-modal-footer">
+                    <button type="button" class="invoice-modal-btn invoice-modal-btn-outline" onclick="document.getElementById('modal-invoice-{{ $order->invoice->id }}').style.display='none'">Close</button>
+                    <a href="{{ route('supplier.purchase-orders.show', $order) }}" class="invoice-modal-btn invoice-modal-btn-outline">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        View PO
+                    </a>
+                    <a href="{{ route('supplier.invoices.export-pdf', $order->invoice) }}" class="invoice-modal-btn invoice-modal-btn-outline">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export to PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+@endforeach
 
 <script>
 function toggleRow(id) {

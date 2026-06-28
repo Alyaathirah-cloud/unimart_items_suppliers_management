@@ -44,10 +44,13 @@ class SettingController extends Controller
             'reorder_point_threshold' => 'required|integer|min:0',
             'expiry_warning_days' => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
-            'owner_whatsapp_number' => 'nullable|string|max:30',
-            'callmebot_phone' => 'nullable|string|max:30',
+            'owner_whatsapp_number' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
+            'callmebot_phone' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
             'callmebot_api_key' => 'nullable|string|max:255',
             'whatsapp_enabled' => 'sometimes|boolean',
+        ], [
+            'owner_whatsapp_number.regex' => 'The owner WhatsApp number format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
+            'callmebot_phone.regex' => 'The CallMeBot phone format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
         ]);
 
         Setting::set('reorder_point_threshold', $request->reorder_point_threshold);
@@ -64,9 +67,12 @@ class SettingController extends Controller
     public function testWhatsApp(Request $request)
     {
         $request->validate([
-            'callmebot_phone' => 'nullable|string|max:30',
+            'callmebot_phone' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
             'callmebot_api_key' => 'nullable|string|max:255',
-            'owner_whatsapp_number' => 'nullable|string|max:30',
+            'owner_whatsapp_number' => ['nullable', 'string', 'regex:/^(\+?601|01)[0-9]{8,9}$/'],
+        ], [
+            'callmebot_phone.regex' => 'The CallMeBot phone format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
+            'owner_whatsapp_number.regex' => 'The owner WhatsApp number format is invalid. It must be a Malaysian number (e.g. 0123456789, 60123456789 or +60123456789).',
         ]);
 
         $testMessage = "✅ 22UniMart WhatsApp notifications are configured successfully.";

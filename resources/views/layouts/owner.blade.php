@@ -59,7 +59,10 @@
     <nav class="sidebar-nav">
         <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}"><span class="nav-icon">⊞</span> Dashboard</a>
         <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}"><span class="nav-icon">📦</span> Inventory</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
+        @if(auth()->user()->isOwner())
+            <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
+            <a href="{{ route('owner.staff.index') }}" class="nav-item {{ request()->routeIs('owner.staff.*') ? 'active' : '' }}"><span class="nav-icon">👥</span> Staff</a>
+        @endif
         <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}"><span class="nav-icon">🛒</span> Purchase Orders</a>
         <a href="{{ route('owner.return-requests.index') }}" class="nav-item {{ request()->routeIs('owner.return-requests.*') ? 'active' : '' }}"><span class="nav-icon">↩</span> Return Requests</a>
         <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}"><span class="nav-icon">📋</span> Credit Notes</a>
@@ -67,7 +70,7 @@
         <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}"><span class="nav-icon">🔔</span> Notifications</a>
     </nav>
     <div class="sidebar-bottom">
-        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: Owner</div>
+        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: {{ ucfirst(auth()->user()->role) }}</div>
         <form action="{{ route('logout') }}" method="POST" style="margin: 0; width: 100%;">
             @csrf
             <button type="submit" class="btn-report" style="background: #c0392b;">Logout</button>
@@ -84,21 +87,7 @@
             </div>
             <div class="topbar-right">
                 <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-                <div class="topbar-profile" onclick="toggleProfileDropdown()">
-                    <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                    <div>
-                        <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                        <div style="font-size:0.72rem;color:#9daec5;">Owner</div>
-                    </div>
-                    <div class="profile-dropdown" id="profileDropdown">
-                        <a href="{{ route('owner.profile.edit') }}" class="dropdown-item">👤 My Profile</a>
-                        <a href="{{ route('owner.password.change') }}" class="dropdown-item">🔐 Change Password</a>
-                        <form action="{{ route('logout') }}" method="POST" style="display:contents;">
-                            @csrf
-                            <button type="submit" class="dropdown-item logout" style="border:none;background:none;width:100%;text-align:left;cursor:pointer;">🚪 Logout</button>
-                        </form>
-                    </div>
-                </div>
+                @include('owner.components.topbar-profile')
             </div>
         @endif
     </div>
@@ -106,6 +95,40 @@
         @yield('content')
     </div>
 </div>
+
+<!-- Global System Notifications (Toast) -->
+<div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+    @if(session('success'))
+        <div class="toast-popup toast-success">
+            <div class="toast-icon">✓</div>
+            <div class="toast-text">{{ session('success') }}</div>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="toast-popup toast-error">
+            <div class="toast-icon">✕</div>
+            <div class="toast-text">{{ session('error') }}</div>
+        </div>
+    @endif
+</div>
+<style>
+    .toast-popup { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9rem; font-weight: 500; animation: slideInRight 0.3s forwards, fadeOut 0.3s forwards 4s; opacity: 0; }
+    .toast-success { background: #fff; border-left: 4px solid #1d8348; color: #1a2744; }
+    .toast-success .toast-icon { background: #e8f8f0; color: #1d8348; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; }
+    .toast-error { background: #fff; border-left: 4px solid #c0392b; color: #1a2744; }
+    .toast-error .toast-icon { background: #fdedec; color: #c0392b; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; display: none; } }
+</style>
+<script>
+    setTimeout(function() {
+        const toasts = document.querySelectorAll('.toast-popup');
+        toasts.forEach(toast => {
+            setTimeout(() => { toast.remove(); }, 500); // after animation finishes
+        });
+    }, 4000);
+</script>
+
 @stack('scripts')
 <script>
 function toggleProfileDropdown() {

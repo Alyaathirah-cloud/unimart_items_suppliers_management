@@ -16,7 +16,6 @@ class CreditNote extends Model
         'invoice_id',
         'purchase_order_id',
         'amount',
-        'remaining_balance',
         'issue_date',
         'status',
         'reason',
@@ -24,7 +23,6 @@ class CreditNote extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'remaining_balance' => 'decimal:2',
         'issue_date' => 'date',
     ];
 

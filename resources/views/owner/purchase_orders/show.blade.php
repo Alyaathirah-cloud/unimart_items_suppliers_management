@@ -1,90 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PO #{{ $purchaseOrder->po_number }} – 22UniMart</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/po-detail.css') }}">
-    <style>
-        /* Button system */
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border-radius:8px; border:0; cursor:pointer; font-weight:600; transition:all .12s ease; font-family:inherit; }
-        .btn-primary { background:#0f3b73; color:#fff; }
-        .btn-primary:hover { background:#0c2f59; }
-        .btn-secondary { background:#fff; color:#0f3b73; border:1px solid #dbe7f5; }
-        .btn-secondary:hover { background:#f4f8fc; }
-        .btn-danger { background:#c0392b; color:#fff; }
-        .btn-danger:hover { background:#9f2e25; }
-        .btn-outline { background:transparent; color:#0f3b73; border:1px solid rgba(15,59,115,0.12); }
-        .btn-export-pdf, .btn-view-invoice, .btn-modal-close, .btn-report { padding:8px 14px; border-radius:8px; }
-        .btn-export-pdf { background:#eef6ff; color:#0f3b73; border:1px solid #dbe7f5; }
-        .btn-view-invoice { background:#0f3b73; color:#fff; }
-        .btn-modal-close { background:#fff; color:#0f3b73; border:1px solid #e6eefc; }
-        .btn-report { background:#c0392b; color:#fff; }
-        .btn-report:hover { background:#9f2e25; }
-        /* Modal styles */
-        .modal-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,12,28,0.6); z-index:9999; }
-        .modal-overlay.open { display:flex; }
-        .modal-box { background:#fff; border-radius:12px; width:480px; max-width:92%; padding:20px; box-shadow:0 8px 40px rgba(6,12,28,0.2); }
-        .modal-title { font-size:1.05rem; font-weight:800; margin-bottom:8px; }
-        .modal-body { color:#475569; margin-bottom:18px; }
-        .modal-actions { display:flex; gap:12px; justify-content:flex-end; }
-    </style>
-</head>
-<body>
+@extends('layouts.owner')
 
-{{-- ── Sidebar ── --}}
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-sq">22</div>
-        <div>
-            <div class="brand-name">22UNIMART</div>
-            <div class="brand-sub">Inventory Control</div>
-        </div>
-    </div>
-    <nav style="flex:1">
-        <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}"><span class="nav-icon">⊞</span> Dashboard</a>
-        <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}"><span class="nav-icon">📦</span> Inventory</a>
-        <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}"><span class="nav-icon">🛒</span> Purchase Orders</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
-        <a href="{{ route('owner.return-requests.index') }}" class="nav-item {{ request()->routeIs('owner.return-requests.*') ? 'active' : '' }}"><span class="nav-icon">↩</span> Return Requests</a>
-        <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}"><span class="nav-icon">📋</span> Credit Notes</a>
-        <a href="{{ route('owner.invoices.index') }}" class="nav-item {{ request()->routeIs('owner.invoices.*') ? 'active' : '' }}"><span class="nav-icon">📄</span> Invoices</a>
-        <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}"><span class="nav-icon">🔔</span> Notifications</a>
-    </nav>
-        <div class="sidebar-bottom">
-        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: Owner</div>
-        <form action="{{ route('logout') }}" method="POST" style="margin: 0; width: 100%;">
-            @csrf
-            <button type="submit" class="btn-report" style="background: #c0392b;">Logout</button>
-        </form>
-    </div>
-</aside>
+@section('title', 'PO #' . $purchaseOrder->po_number . ' – 22UniMart')
 
-{{-- ── Main ── --}}
-<div class="main">
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/po-detail.css') }}">
+<style>
+    /* Button system */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; border-radius:8px; border:0; cursor:pointer; font-weight:600; transition:all .12s ease; font-family:inherit; }
+    .btn-primary { background:#0f3b73; color:#fff; }
+    .btn-primary:hover { background:#0c2f59; }
+    .btn-secondary { background:#fff; color:#0f3b73; border:1px solid #dbe7f5; }
+    .btn-secondary:hover { background:#f4f8fc; }
+    .btn-danger { background:#c0392b; color:#fff; }
+    .btn-danger:hover { background:#9f2e25; }
+    .btn-outline { background:transparent; color:#0f3b73; border:1px solid rgba(15,59,115,0.12); }
+    .btn-export-pdf, .btn-view-invoice, .btn-modal-close, .btn-report { padding:8px 14px; border-radius:8px; }
+    .btn-export-pdf { background:#eef6ff; color:#0f3b73; border:1px solid #dbe7f5; }
+    .btn-view-invoice { background:#0f3b73; color:#fff; }
+    .btn-modal-close { background:#fff; color:#0f3b73; border:1px solid #e6eefc; }
+    .btn-report { background:#c0392b; color:#fff; }
+    .btn-report:hover { background:#9f2e25; }
+    /* Modal styles */
+    .modal-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(6,12,28,0.6); z-index:9999; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:#fff; border-radius:12px; width:480px; max-width:92%; padding:20px; box-shadow:0 8px 40px rgba(6,12,28,0.2); }
+    .modal-title { font-size:1.05rem; font-weight:800; margin-bottom:8px; }
+    .modal-body { color:#475569; margin-bottom:18px; }
+    .modal-actions { display:flex; gap:12px; justify-content:flex-end; }
+</style>
+@endpush
 
-    {{-- Topbar --}}
-    <div class="topbar">
-        <a href="{{ route('owner.purchase-orders.index') }}" class="back-link">← Back to Purchase Orders</a>
-                <div class="topbar-right">
-            <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="content">
+@section('content')
 
         {{-- Flash messages --}}
         @if(session('success'))
@@ -314,17 +260,37 @@
                     @endif
                 </div>
 
-                {{-- Destination Facility --}}
+
+
+                {{-- Purchase Order Information (Audit) --}}
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">📍 Destination Facility</span>
+                        <span class="card-title">ℹ️ Purchase Order Information</span>
                     </div>
                     <div style="padding:16px 20px">
-                        <div style="font-size:.88rem;font-weight:700;color:#0D1B2A;margin-bottom:4px">22UniMart Warehouse</div>
-                        <div class="facility-addr">
-                            {{ optional($purchaseOrder->supplier)->contact_email ?? 'contact@22unimart.com' }}<br>
-                            Main Distribution Centre<br>
-                            Kuala Lumpur, Malaysia
+                        @php
+                            $creator = \App\Models\User::find($purchaseOrder->created_by);
+                            $updater = $purchaseOrder->updated_by ? \App\Models\User::find($purchaseOrder->updated_by) : null;
+                            $creatorText = $creator ? $creator->name . ' (' . ucfirst($creator->role) . ')' : 'System';
+                            $updaterText = $updater ? $updater->name . ' (' . ucfirst($updater->role) . ')' : ($creator ? $creatorText : 'System');
+                        @endphp
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div>
+                                <div style="font-size:0.75rem; color:#7a8fa8; text-transform:uppercase; font-weight:700;">Created By</div>
+                                <div style="font-size:0.88rem; color:#0D1B2A; font-weight:500;">{{ $creatorText }}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:0.75rem; color:#7a8fa8; text-transform:uppercase; font-weight:700;">Created At</div>
+                                <div style="font-size:0.88rem; color:#0D1B2A; font-weight:500;">{{ $purchaseOrder->created_at ? $purchaseOrder->created_at->format('d M Y, g:i A') : '—' }}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:0.75rem; color:#7a8fa8; text-transform:uppercase; font-weight:700;">Last Updated By</div>
+                                <div style="font-size:0.88rem; color:#0D1B2A; font-weight:500;">{{ $updaterText }}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:0.75rem; color:#7a8fa8; text-transform:uppercase; font-weight:700;">Last Updated At</div>
+                                <div style="font-size:0.88rem; color:#0D1B2A; font-weight:500;">{{ $purchaseOrder->updated_at ? $purchaseOrder->updated_at->format('d M Y, g:i A') : '—' }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -360,10 +326,12 @@
                     </div>
                 </div>
 
-            </div>
-        </div>{{-- /grid-2 --}}
-    </div>{{-- /content --}}
-</div>{{-- /main --}}
+
+@endsection
+
+
+
+
 
     {{-- Inventory Update Reminder Modal (shown after receive) --}}
     @if(session('item_update_reminder'))
@@ -537,43 +505,3 @@ function updateGoodQty(id) {
 }
 </style>
 @endif
-
-{{-- Credit Note Modal --}}
-<div class="modal fade" id="creditNoteModal" tabindex="-1" aria-labelledby="creditNoteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="creditNoteModalLabel">Credit Note</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="creditNoteContent">
-                <!-- Content loaded via AJAX -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="exportCreditNoteBtn">Export to CSV</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function openCreditNoteModal(returnRequestId) {
-    fetch(`/owner/return-requests/${returnRequestId}/credit-note`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('creditNoteContent').innerHTML = data.html;
-                document.getElementById('exportCreditNoteBtn').onclick = () => {
-                    window.open(data.pdf_url, '_blank');
-                };
-                new bootstrap.Modal(document.getElementById('creditNoteModal')).show();
-            } else {
-                alert('Credit note not available.');
-            }
-        });
-}
-</script>
-
-</body>
-</html>

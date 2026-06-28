@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\InventoryAlert;
 use App\Models\Item;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\CallMeBotService;
 use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
@@ -18,8 +19,18 @@ class SendInventoryAlerts extends Command
 
     public function handle()
     {
-        $ownerPhone = trim((string) Setting::get('owner_whatsapp_number', config('services.twilio.owner_whatsapp_number')));
-        $callMeBotPhone = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
+        // ── Resolve owner WhatsApp number ─────────────────────────────────────
+        // Priority: 1) users.whatsapp_number (owner role, set via My Profile)
+        //           2) settings table (legacy admin panel)
+        //           3) .env config (last-resort fallback)
+        $ownerUser  = User::where('role', 'owner')->first();
+        $ownerPhone = trim((string) (
+            ($ownerUser && !empty($ownerUser->whatsapp_number))
+                ? $ownerUser->whatsapp_number
+                : Setting::get('owner_whatsapp_number', config('services.twilio.owner_whatsapp_number'))
+        ));
+
+        $callMeBotPhone  = trim((string) Setting::get('callmebot_phone', config('services.callmebot.phone')));
         $callMeBotApiKey = trim((string) Setting::get('callmebot_api_key', config('services.callmebot.apikey')));
         $lowStockThreshold = Setting::get('low_stock_threshold', 10);
         $expiryWarningDays = Setting::get('expiry_warning_days', 30);
@@ -35,8 +46,11 @@ class SendInventoryAlerts extends Command
         }
 
         if ($ownerPhone === '') {
-            Log::channel('whatsapp_alerts')->warning('Owner WhatsApp number is not configured.');
-            $this->warn('Owner WhatsApp number is not configured.');
+            Log::channel('whatsapp_alerts')->warning(
+                'Owner WhatsApp number is not configured. '
+                . 'Set it via My Profile → WhatsApp Number, or in the Settings panel.'
+            );
+            $this->warn('Owner WhatsApp number is not configured. Set it via My Profile → WhatsApp Number.');
             return Command::SUCCESS;
         }
 

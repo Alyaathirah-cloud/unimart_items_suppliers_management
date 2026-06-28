@@ -1,45 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoices – 22UniMart</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+@extends('layouts.owner')
+
+@section('title', 'Invoices – 22UniMart')
+
+@push('styles')
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #eef2f7; display: flex; min-height: 100vh; }
-
-        /* Sidebar */
-        .sidebar { width: 210px; flex-shrink: 0; background: #0f2044; color: #fff; display: flex; flex-direction: column; padding: 0 0 24px 0; position: fixed; top: 0; left: 0; height: 100vh; }
-        .sidebar-brand { padding: 20px 20px 4px; display: flex; align-items: center; gap: 12px; }
-        .brand-square { width: 32px; height: 32px; background: #fff; color: #0f2044; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; flex-shrink: 0; }
-        .brand-text .brand-name { font-size: 0.9rem; font-weight: 800; }
-        .brand-text .brand-sub  { font-size: 0.68rem; color: #8ca0c0; }
-        .sidebar-nav { flex: 1; margin-top: 20px; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; font-size: 0.88rem; font-weight: 500; color: #8ca0c0; cursor: pointer; text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
-        .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
-        .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: #4a90d9; }
-        .nav-icon { width: 18px; text-align: center; flex-shrink: 0; }
-        .sidebar-bottom { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-report { background: #1e3a6e; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s; text-decoration: none; }
-        .btn-report:hover { background: #2a4f8f; }
-        .sidebar-link { display: flex; align-items: center; gap: 10px; color: #8ca0c0; font-size: 0.82rem; text-decoration: none; padding: 6px 0; }
-
-        /* Main */
-        .main { margin-left: 210px; flex: 1; display: flex; flex-direction: column; }
-
-        /* Topbar */
-        .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
-        .search-box { display: flex; align-items: center; gap: 8px; background: #f4f6fb; border-radius: 8px; padding: 8px 14px; flex: 1; max-width: 360px; }
-        .search-box input { border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; font-size: 0.88rem; color: #3a4d6a; width: 100%; }
-        .search-box input::placeholder { color: #9daec5; }
-        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #0f2044; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.85rem; font-weight: 700; }
-
-        /* Content */
-        .content { padding: 32px; }
         .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
         .page-title { font-size: 1.6rem; font-weight: 800; color: #0f2044; }
         .page-sub   { font-size: 0.85rem; color: #7a8fa8; margin-top: 4px; }
@@ -97,71 +61,33 @@
         .page-btn:hover { background: #0f2044; color: #fff; border-color: #0f2044; }
         .page-btn.disabled { opacity: 0.4; pointer-events: none; }
 
-        /* Flash */
-        .flash { padding: 13px 20px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 20px; font-weight: 500; }
-        .flash-success { background: #e8f8f0; color: #1d8348; border: 1px solid #a9dfbf; }
-        .flash-error   { background: #fdedec; color: #922b21; border: 1px solid #f5b7b1; }
-
         /* Empty */
         .empty-state { padding: 60px 20px; text-align: center; color: #9daec5; }
         .empty-icon  { font-size: 2.5rem; margin-bottom: 12px; }
         .empty-text  { font-size: 0.95rem; font-weight: 600; color: #7a8fa8; }
+
+        /* Generate missing invoices btn */
+        .btn-generate-missing { background: #d4870a; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 0.84rem; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: background 0.15s; }
+        .btn-generate-missing:hover { background: #b3720a; color: #fff; }
+        
+        .topbar-search { display: flex; align-items: center; gap: 8px; background: #f4f6fb; border-radius: 8px; padding: 8px 14px; flex: 1; max-width: 360px; margin-right: auto; }
+        .topbar-search input { border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif; font-size: 0.88rem; color: #3a4d6a; width: 100%; }
+        .topbar-search input::placeholder { color: #9daec5; }
     </style>
-</head>
-<body>
+@endpush
 
-<!-- Sidebar -->
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-square">22</div>
-        <div class="brand-text">
-            <div class="brand-name">22UNIMART</div>
-            <div class="brand-sub">Inventory Control</div>
-        </div>
+@section('topbar')
+    <div class="topbar-search">
+        <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search invoices...">
     </div>
-    <nav class="sidebar-nav">
-        <a href="{{ route('owner.dashboard') }}" class="nav-item {{ request()->routeIs('owner.dashboard') ? 'active' : '' }}"><span class="nav-icon">⊞</span> Dashboard</a>
-        <a href="{{ route('owner.items.index') }}" class="nav-item {{ request()->routeIs('owner.items.*') ? 'active' : '' }}"><span class="nav-icon">📦</span> Inventory</a>
-        <a href="{{ route('owner.suppliers.index') }}" class="nav-item {{ request()->routeIs('owner.suppliers.*') ? 'active' : '' }}"><span class="nav-icon">🏢</span> Suppliers</a>
-        <a href="{{ route('owner.purchase-orders.index') }}" class="nav-item {{ request()->routeIs('owner.purchase-orders.*') ? 'active' : '' }}"><span class="nav-icon">🛒</span> Purchase Orders</a>
-        <a href="{{ route('owner.return-requests.index') }}" class="nav-item {{ request()->routeIs('owner.return-requests.*') ? 'active' : '' }}"><span class="nav-icon">↩</span> Return Requests</a>
-        <a href="{{ route('owner.invoices.index') }}" class="nav-item active"><span class="nav-icon">📄</span> Invoices</a>
-        <a href="{{ route('owner.credit-notes.index') }}" class="nav-item {{ request()->routeIs('owner.credit-notes.*') ? 'active' : '' }}"><span class="nav-icon">📋</span> Credit Notes</a>
-        <a href="{{ route('owner.notifications.index') }}" class="nav-item {{ request()->routeIs('owner.notifications.*') ? 'active' : '' }}"><span class="nav-icon">🔔</span> Notifications</a>
-    </nav>
-    <div class="sidebar-bottom">
-        <div class="sidebar-link" style="color: #fff; cursor: default; font-weight: bold;">Role: Owner</div>
-        <form action="{{ route('logout') }}" method="POST" style="margin: 0; width: 100%;">
-            @csrf
-            <button type="submit" class="btn-report" style="background: #c0392b;">Logout</button>
-        </form>
+    <div class="topbar-right">
+        <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
+        @include('owner.components.topbar-profile')
     </div>
-</aside>
+@endsection
 
-<!-- Main -->
-<div class="main">
-    <!-- Topbar -->
-    <div class="topbar">
-        <div class="search-box">
-            <svg width="15" height="15" fill="none" stroke="#9daec5" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" placeholder="Search invoices...">
-        </div>
-        <div class="topbar-right">
-            <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="content">
+@section('content')
 
         <!-- Page header -->
         <div class="page-header">
@@ -169,7 +95,17 @@
                 <div class="page-title">Invoices</div>
                 <div class="page-sub">Manage and view all invoices from suppliers.</div>
             </div>
-            <!-- Optionally you can have an add new invoice action here if applicable -->
+            @php
+                $missingCount = \App\Models\PurchaseOrder::where('status', 'received')
+                    ->whereDoesntHave('invoice')->count();
+            @endphp
+            @if($missingCount > 0)
+            <a href="{{ route('owner.purchase-orders.generate-missing-invoices') }}"
+               class="btn-generate-missing"
+               onclick="return confirm('This will generate invoices for {{ $missingCount }} received PO(s) that have no invoice. Continue?')">
+                🔧 Generate Missing Invoices ({{ $missingCount }})
+            </a>
+            @endif
         </div>
 
         @if(session('success'))
@@ -193,10 +129,10 @@
 
                 <select name="status" class="filter-select">
                     <option value="">All Statuses</option>
-                    <option value="Active" {{ request('status') == 'Active' ? 'selected' : '' }}>Active</option>
-                    <option value="Partially Credited" {{ request('status') == 'Partially Credited' ? 'selected' : '' }}>Partially Credited</option>
-                    <option value="Overdue" {{ request('status') == 'Overdue' ? 'selected' : '' }}>Overdue</option>
-                    <option value="Closed" {{ request('status') == 'Closed' ? 'selected' : '' }}>Closed</option>
+                    <option value="Unpaid" {{ request('status') == 'Unpaid' ? 'selected' : '' }}>Unpaid</option>
+                    <option value="Settled" {{ request('status') == 'Settled' ? 'selected' : '' }}>Settled</option>
+                    <option value="Paid" {{ request('status') == 'Paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="Active" {{ request('status') == 'Active' ? 'selected' : '' }}>Active (Legacy)</option>
                 </select>
 
                 <button type="submit" class="filter-btn">Apply Filters</button>
@@ -243,11 +179,9 @@
                                 @php
                                     $computedStatus = $invoice->computeStatus();
                                     $statusColor = $invoice->statusColor();
-                                    $bg = '#f8fafc'; $col = '#3a4d6a';
-                                    if($statusColor === 'blue') { $bg = '#e8f4ff'; $col = '#2563eb'; }
-                                    elseif($statusColor === 'purple') { $bg = '#f3e8ff'; $col = '#9333ea'; }
-                                    elseif($statusColor === 'red') { $bg = '#fdedec'; $col = '#c0392b'; }
-                                    elseif($statusColor === 'green') { $bg = '#e8f8f0'; $col = '#1d8348'; }
+                                    $bg = '#fef3e2'; $col = '#d4870a'; // Unpaid = orange
+                                    if($statusColor === 'green')  { $bg = '#e8f8f0'; $col = '#1d8348'; }   // Paid
+                                    elseif($statusColor === 'purple') { $bg = '#f3e8ff'; $col = '#9333ea'; } // Settled
                                 @endphp
                                 <span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;background:{{ $bg }};color:{{ $col }};">{{ $computedStatus }}</span>
                             </td>
@@ -334,7 +268,4 @@
             </div>
         </div>
 
-    </div>
-</div>
-</body>
-</html>
+@endsection

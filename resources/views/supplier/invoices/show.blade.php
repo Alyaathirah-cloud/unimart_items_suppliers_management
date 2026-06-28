@@ -1,342 +1,361 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoice {{ $invoice->invoice_number }} – Supplier Portal</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+@extends('layouts.supplier')
+
+@section('title', 'Invoice ' . $invoice->invoice_number . ' – Supplier Portal')
+
+@push('styles')
     <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Inter',sans-serif;background:#eef2f7;display:flex;min-height:100vh}
-        .sidebar{width:210px;flex-shrink:0;background:#0f2044;color:#fff;display:flex;flex-direction:column;padding:0 0 24px;position:fixed;top:0;left:0;height:100vh}
-        .sidebar-brand{padding:24px 20px 8px}
-        .brand-name{font-size:1rem;font-weight:800;letter-spacing:.5px}
-        .brand-sub{font-size:.7rem;color:#8ca0c0;margin-top:2px}
-        .sidebar-nav{flex:1;margin-top:20px}
-        .nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;font-size:.88rem;font-weight:500;color:#8ca0c0;text-decoration:none;transition:all .15s;border-left:3px solid transparent}
-        .nav-item:hover{color:#fff;background:rgba(255,255,255,.06)}
-        .nav-item.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:#4a90d9}
-        .nav-icon{width:18px;text-align:center;flex-shrink:0}
-        .sidebar-bottom{padding:0 20px;display:flex;flex-direction:column;gap:8px}
-        .btn-report{background:#1e3a6e;color:#fff;border:none;border-radius:8px;padding:12px 16px;font-size:.85rem;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;text-decoration:none}
-        .btn-report:hover{background:#2a4f8f}
-        .sidebar-link{display:flex;align-items:center;gap:10px;color:#8ca0c0;font-size:.82rem;text-decoration:none;padding:6px 0}
-        .sidebar-link:hover{color:#fff}
-        .main{margin-left:210px;flex:1;display:flex;flex-direction:column}
-        .topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 32px;height:56px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
-        .topbar-icons{margin-left:auto;display:flex;align-items:center;gap:20px}
-        .icon-btn{background:none;border:none;cursor:pointer;color:#5a6a85;font-size:1.1rem;position:relative;padding:4px}
-        .topbar-profile{display:flex;align-items:center;gap:8px}
-        .profile-name{font-size:.85rem;font-weight:600;color:#1a2744}
-        .profile-sub{font-size:.72rem;color:#9daec5;cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;padding:0}
-        .avatar{width:36px;height:36px;border-radius:50%;background:#0f2044;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:700}
-        
+        /* Breadcrumb */
         .breadcrumb { font-size: 0.75rem; font-weight: 700; color: #9daec5; letter-spacing: 0.8px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
         .breadcrumb a { color: #9daec5; text-decoration: none; transition: color 0.15s; }
         .breadcrumb a:hover { color: #0f2044; }
 
-        .content { padding: 32px; max-width: 1200px; margin: 0 auto; width: 100%; }
-        
+        /* Grid */
         .grid-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
-
-        .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(15,32,68,0.07); overflow: hidden; margin-bottom: 24px; }
-        .card-header { padding: 20px 24px 16px; border-bottom: 1px solid #f0f4f8; display: flex; align-items: center; justify-content: space-between; }
-        .card-title { font-size: 0.95rem; font-weight: 700; color: #0f2044; display: flex; align-items: center; gap: 8px; }
-        .card-body { padding: 24px; }
-
-        .invoice-doc-header { text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px dashed #e2e8f0; }
-        .invoice-doc-title { font-size: 1.8rem; font-weight: 800; color: #0f2044; margin-bottom: 4px; }
-        .invoice-doc-sub { font-size: 0.9rem; color: #7a8fa8; }
-
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
-        .info-block h5 { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9daec5; margin-bottom: 8px; }
-        .info-block p { font-size: 0.88rem; color: #3a4d6a; line-height: 1.6; margin-bottom: 2px; }
-        .info-block strong { color: #0f2044; font-weight: 700; font-size: 0.95rem; }
-
-        .invoice-meta { background: #f8fafc; border: 1px solid #eef2f7; border-radius: 8px; padding: 16px; }
-        .meta-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.88rem; }
-        .meta-row:last-child { margin-bottom: 0; }
-        .meta-label { color: #7a8fa8; }
-        .meta-val { color: #0f2044; font-weight: 600; text-align: right; }
-
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-        .items-table th { padding: 12px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7a8fa8; border-bottom: 2px solid #eef2f7; text-align: left; }
-        .items-table td { padding: 16px 12px; font-size: 0.88rem; color: #3a4d6a; border-bottom: 1px solid #f4f6fb; }
-        .items-table tr:last-child td { border-bottom: none; }
         
-        .totals-block { width: 300px; margin-left: auto; }
-        .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.88rem; color: #3a4d6a; }
-        .total-row.grand-total { border-top: 2px solid #eef2f7; margin-top: 8px; padding-top: 12px; font-size: 1.1rem; font-weight: 800; color: #0f2044; }
-        .credit-row { color: #e74c3c; font-weight: 600; }
-
-        .btn-primary-action { background: #0f2044; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; display: block; transition: background 0.15s; width: 100%; margin-bottom: 12px; }
-        .btn-primary-action:hover { background: #1e3a6e; }
-        .btn-secondary-action { background: #fff; color: #3a4d6a; border: 1px solid #d1dce8; border-radius: 8px; padding: 12px 16px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; display: block; transition: all 0.15s; width: 100%; margin-bottom: 12px; }
-        .btn-secondary-action:hover { background: #f4f6fb; color: #0f2044; border-color: #9daec5; }
-
-        .related-table { width: 100%; border-collapse: collapse; }
-        .related-table th { padding: 10px 16px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #7a8fa8; background: #f8fafc; text-align: left; }
-        .related-table td { padding: 12px 16px; font-size: 0.82rem; color: #3a4d6a; border-bottom: 1px solid #f4f6fb; }
-        .related-table tr:last-child td { border-bottom: none; }
-        .empty-rel { padding: 24px; text-align: center; color: #9daec5; font-size: 0.85rem; font-style: italic; }
-        .related-link { color: #4a90d9; font-weight: 600; text-decoration: none; font-family: monospace; }
-        .related-link:hover { text-decoration: underline; }
+        /* Typography */
+        .page-title { font-size: 1.6rem; font-weight: 800; color: #0f2044; margin: 0; }
+        .page-sub { font-size: 0.85rem; color: #7a8fa8; margin-top: 4px; }
+        
+        /* Cards */
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(15,32,68,0.04); overflow: hidden; border: 1px solid #eef2f7; }
+        
+        /* Buttons */
+        .btn-action-outline { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #fff; color: #0f2044; border: 1px solid #d1dce8; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.15s; }
+        .btn-action-outline:hover { background: #f8fafc; border-color: #9daec5; }
+        .btn-action-primary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #0f2044; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+        .btn-action-primary:hover { background: #1e3a6e; }
+        .btn-success-large { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #27ae60; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: background 0.15s; margin-bottom: 12px; }
+        .btn-success-large:hover { background: #219653; }
 
         @media print {
-            .sidebar, .topbar, .col-actions, .card-header { display: none !important; }
+            .sidebar, .topbar, .col-actions, .page-header, .summary-cards-grid, .breadcrumb { display: none !important; }
             .main { margin-left: 0 !important; }
             .content { padding: 0 !important; max-width: 100% !important; }
             .grid-layout { display: block !important; }
-            .card { box-shadow: none !important; margin-bottom: 0 !important; border-radius: 0 !important; }
+            .card { box-shadow: none !important; border: none !important; margin: 0 !important; border-radius: 0 !important; padding: 0 !important; }
             body { background: #fff !important; }
         }
     </style>
-</head>
-<body>
+@endpush
 
-<!-- Sidebar -->
-@include('supplier.partials.sidebar', ['active' => 'invoices'])
-
-<!-- Main -->
-<div class="main">
-    <!-- Topbar -->
-    <div class="topbar">
-        <div class="breadcrumb">
-            <a href="{{ route('supplier.invoices.index') }}">Invoices</a>
-            <span style="color:#e2e8f0">/</span>
-            <span style="color:#0f2044">{{ $invoice->invoice_number }}</span>
-        </div>
-        <div class="topbar-icons">
-            <button class="icon-btn">🔔</button>
-            <div class="topbar-profile">
-                <div>
-                    <div class="profile-name">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf
-                        <button type="submit" class="profile-sub">Logout</button>
-                    </form>
-                </div>
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name,0,1)) }}</div>
-            </div>
-        </div>
+@section('breadcrumbs')
+    <div class="breadcrumb" style="display: inline-flex;">
+        <a href="{{ route('supplier.invoices.index') }}">Invoices</a>
+        <span style="color:#e2e8f0">/</span>
+        <span style="color:#0f2044">{{ $invoice->invoice_number }}</span>
     </div>
+@endsection
 
-    <div class="content">
-        <div class="grid-layout">
-            <!-- Main Content Area -->
-            <div class="col-main">
-                
-                <!-- Invoice Document Card -->
-                <div class="card p-0">
-                    <div class="card-body">
-                        <div class="invoice-doc-header">
-                            <div class="invoice-doc-title">22UniMart</div>
-                            <div class="invoice-doc-sub">Inventory Management System</div>
-                        </div>
-
-                        <div class="info-grid">
-                            <div class="info-block">
-                                <h5>Your Information</h5>
-                                <p><strong>{{ $invoice->supplier->name }}</strong></p>
-                                <p>{{ $invoice->supplier->contact_email }}</p>
-                                <p>{{ $invoice->supplier->contact_phone }}</p>
-                            </div>
-                            
-                            <div class="info-block invoice-meta">
-                                <div class="meta-row">
-                                    <span class="meta-label">Invoice No:</span>
-                                    <span class="meta-val">{{ $invoice->invoice_number }}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Date Issued:</span>
-                                    <span class="meta-val">{{ $invoice->invoice_date->format('M d, Y') }}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Payment Due:</span>
-                                    <span class="meta-val">{{ $invoice->payment_due_date ? $invoice->payment_due_date->format('M d, Y') : 'N/A' }}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Status:</span>
-                                    <span class="meta-val">{{ $invoice->computeStatus() }}</span>
-                                </div>
-
-                            </div>
-                        </div>
-                        
-                        <div class="info-grid" style="margin-top:-10px;">
-                            <div class="info-block">
-                                <h5>Billed To</h5>
-                                <p><strong>22UniMart Administration</strong></p>
-                            </div>
-                            
-                            @if($invoice->purchaseOrder)
-                            <div class="info-block">
-                                <h5>Reference</h5>
-                                <p><strong>PO Number:</strong> <a href="{{ route('supplier.purchase-orders.index') }}?search={{ $invoice->purchaseOrder->po_number }}" style="color:#4a90d9;text-decoration:none;">{{ $invoice->purchaseOrder->po_number }}</a></p>
-                                <p><strong>Ordered:</strong> {{ $invoice->purchaseOrder->order_date->format('M d, Y') }}</p>
-                            </div>
-                            @endif
-                        </div>
-
-                        <h5 style="font-size: 0.72rem;font-weight: 700;text-transform: uppercase;letter-spacing: 0.8px;color: #9daec5;margin-bottom: 12px;">Invoice Items</h5>
-                        <table class="items-table">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th style="text-align:right;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($invoice->lines as $line)
-                                    <tr>
-                                        <td>
-                                            <div style="font-weight:600;color:#0f2044;">{{ optional($line->item)->name ?? 'Unknown Item' }}</div>
-                                            @if($line->uom)
-                                                <div style="font-size:0.75rem;color:#7a8fa8;">Unit: {{ $line->uom }}</div>
-                                            @endif
-                                        </td>
-                                        <td>{{ $line->quantity }}</td>
-                                        <td>RM {{ number_format($line->unit_price, 2) }}</td>
-                                        <td style="text-align:right;font-weight:600;">RM {{ number_format($line->invoice_line_total, 2) }}</td>
-                                    </tr>
-                                @empty
-                                    @if($invoice->purchaseOrder)
-                                        <tr>
-                                            <td>
-                                                <div style="font-weight:600;color:#0f2044;">{{ optional($invoice->purchaseOrder->item)->name ?? 'Unknown Item' }}</div>
-                                            </td>
-                                            <td>{{ $invoice->purchaseOrder->quantity }}</td>
-                                            <td>RM {{ number_format($invoice->purchaseOrder->unit_price, 2) }}</td>
-                                            <td style="text-align:right;font-weight:600;">RM {{ number_format($invoice->total_amount, 2) }}</td>
-                                        </tr>
-                                    @else
-                                        <tr>
-                                            <td colspan="4" style="text-align:center;color:#9daec5;font-style:italic;padding:24px;">No items found for this invoice.</td>
-                                        </tr>
-                                    @endif
-                                @endforelse
-                            </tbody>
-                        </table>
-
-                        <div class="totals-block">
-                            <div class="total-row">
-                                <span>Invoice Total:</span>
-                                <span>RM {{ number_format($invoice->total_amount, 2) }}</span>
-                            </div>
-                            <div class="total-row credit-row">
-                                <span>Credit Deduction:</span>
-                                <span>- RM {{ number_format($invoice->getTotalCreditDeduction(), 2) }}</span>
-                            </div>
-                            <div class="total-row grand-total">
-                                <span>Net Payable:</span>
-                                <span>RM {{ number_format($invoice->getNetPayableAmount(), 2) }}</span>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Related Return Requests -->
-                <div class="card p-0">
-                    <div class="card-header">
-                        <div class="card-title">↩ Related Return Requests</div>
-                    </div>
-                    @if($invoice->returnRequests->count())
-                        <table class="related-table">
-                            <thead>
-                                <tr>
-                                    <th>Return Number</th>
-                                    <th>Status</th>
-                                    <th>Returned Qty</th>
-                                    <th>Credit Amount</th>
-                                    <th>Gross Loss</th>
-                                    <th>Created</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($invoice->returnRequests as $rr)
-                                    <tr>
-                                        <td>{{ $rr->return_number }}</td>
-                                        <td>
-                                            <span style="font-size:0.75rem;font-weight:600;padding:2px 8px;border-radius:12px;background:{{ $rr->status==='Approved'?'#e8f8f0':($rr->status==='Pending'?'#fef3e2':'#fdedec') }};color:{{ $rr->status==='Approved'?'#1d8348':($rr->status==='Pending'?'#d4870a':'#c0392b') }};">{{ $rr->status }}</span>
-                                        </td>
-                                        <td>{{ $rr->lines->sum('quantity') }}</td>
-                                        <td style="font-weight:600;color:#27ae60;">RM {{ number_format($rr->getApprovedTotal(), 2) }}</td>
-                                        <td>
-                                            @if($rr->status === 'Approved' && $rr->getGrossLoss() > 0)
-                                                <span style="color:#c0392b;font-weight:600;">RM {{ number_format($rr->getGrossLoss(), 2) }}</span>
-                                            @else
-                                                <span style="color:#9daec5;">—</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $rr->request_date ? $rr->request_date->format('d M Y') : 'N/A' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <div class="empty-rel">No return requests have been created for this invoice yet.</div>
-                    @endif
-                </div>
-
-                <!-- Related Credit Notes -->
-                <div class="card p-0">
-                    <div class="card-header">
-                        <div class="card-title">📋 Related Credit Notes</div>
-                    </div>
-                    @if($invoice->creditNotes->count())
-                        <table class="related-table">
-                            <thead>
-                                <tr>
-                                    <th>Credit Note</th>
-                                    <th>Status</th>
-                                    <th>Amount</th>
-                                    <th>Issued</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($invoice->creditNotes as $cn)
-                                    <tr>
-                                        <td><a href="{{ route('supplier.credit-notes.show', $cn) }}" class="related-link">{{ $cn->credit_note_id }}</a></td>
-                                        <td>
-                                            <span style="font-size:0.75rem;font-weight:600;padding:2px 8px;border-radius:12px;background:#f8fafc;color:#3a4d6a;border:1px solid #e2e8f0;">{{ $cn->status }}</span>
-                                        </td>
-                                        <td style="font-weight:600;color:#27ae60;">RM {{ number_format($cn->amount, 2) }}</td>
-                                        <td>{{ $cn->issue_date ? \Illuminate\Support\Carbon::parse($cn->issue_date)->format('d M Y') : 'N/A' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <div class="empty-rel">No credit notes have been generated for this invoice yet.</div>
-                    @endif
-                </div>
-
-            </div>
-
-            <!-- Actions Sidebar -->
-            <div class="col-actions">
-                <div class="card">
-                    <div class="card-body" style="padding: 20px;">
-                        <h5 style="font-size: 0.8rem;font-weight: 700;color: #0f2044;margin-bottom: 16px;">Actions</h5>
-                        
-                        <a href="{{ route('supplier.invoices.export-pdf', $invoice) }}" class="btn-primary-action">
-                            ⬇ Download PDF
-                        </a>
-                        
-                        <button onclick="window.print()" class="btn-secondary-action">
-                            🖨 Print Invoice
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
+@section('content')
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title">Invoice Details</h1>
+        <div class="page-sub">View invoice information and related requests.</div>
     </div>
+    <a href="{{ route('supplier.invoices.index') }}" class="btn-action-outline" style="width:auto; padding: 8px 16px;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        Back to Invoices
+    </a>
 </div>
 
-</body>
-</html>
+@if(session('success'))
+    <div style="padding: 16px 20px; border-radius: 10px; background: #e8f8f0; color: #1d8348; border: 1px solid #c3e6cb; margin-bottom: 24px; font-weight: 600; font-size: 0.9rem;">
+        {{ session('success') }}
+    </div>
+@endif
+
+<div class="grid-layout">
+    <div class="col-main">
+        <!-- 4 Summary Cards -->
+        <div class="summary-cards-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+            <div class="card" style="padding: 20px;">
+                <div style="font-size: 0.75rem; color: #7a8fa8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Invoice Total</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #0f2044;">RM {{ number_format($invoice->getNetPayableAmount() + $invoice->getTotalCreditDeduction(), 2) }}</div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <div style="font-size: 0.75rem; color: #7a8fa8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Net to Pay</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #0f2044;">RM {{ number_format($invoice->getNetPayableAmount(), 2) }}</div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <div style="font-size: 0.75rem; color: #7a8fa8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Payment Status</div>
+                @php $status = $invoice->getDisplayStatus(); @endphp
+                <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; 
+                    background: {{ $status === 'Paid' ? '#e8f8f0' : '#fef3e2' }}; 
+                    color: {{ $status === 'Paid' ? '#1d8348' : '#d4870a' }};">
+                    {{ $status }}
+                </div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <div style="font-size: 0.75rem; color: #7a8fa8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Return Status</div>
+                @php 
+                    $rrCount = $invoice->returnRequests->count();
+                    $cnCount = $invoice->creditNotes->count();
+                    $pendingCount = $invoice->returnRequests->where('status', 'Pending')->count();
+                    if($cnCount > 0) {
+                        $retStatus = 'Credit Note Issued';
+                        $retBg = '#e8f0fc'; $retColor = '#2a5fd4';
+                    } elseif($pendingCount > 0) {
+                        $retStatus = 'Return Pending';
+                        $retBg = '#fef3e2'; $retColor = '#d4870a';
+                    } elseif($rrCount > 0) {
+                        $retStatus = 'Return Approved';
+                        $retBg = '#e8f8f0'; $retColor = '#1d8348';
+                    } else {
+                        $retStatus = 'No Return Request';
+                        $retBg = '#f8fafc'; $retColor = '#7a8fa8';
+                    }
+                @endphp
+                <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; background: {{ $retBg }}; color: {{ $retColor }};">
+                    {{ $retStatus }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Document Card -->
+        <div class="card" style="padding: 40px; margin-bottom: 24px;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid #eef2f7;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #0f2044; margin-bottom: 12px;">{{ optional($invoice->supplier)->name ?? 'Supplier' }}</div>
+                    <div style="font-size: 0.95rem; color: #5a6a85; line-height: 1.6;">
+                        @if(optional($invoice->supplier)->address_line_1 || optional($invoice->supplier)->city || optional($invoice->supplier)->country)
+                            {{ $invoice->supplier->address_line_1 }}<br>
+                            @if($invoice->supplier->address_line_2){{ $invoice->supplier->address_line_2 }}<br>@endif
+                            @if($invoice->supplier->city || $invoice->supplier->postal_code)
+                                {{ $invoice->supplier->city }}, @if($invoice->supplier->state){{ $invoice->supplier->state }}, @endif {{ $invoice->supplier->postal_code }}<br>
+                            @endif
+                            {{ $invoice->supplier->country }}<br>
+                        @endif
+                        @if(optional($invoice->supplier)->contact_phone) Phone: {{ $invoice->supplier->contact_phone }}<br> @endif
+                        @if(optional($invoice->supplier)->contact_email) Email: {{ $invoice->supplier->contact_email }} @endif
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 2rem; font-weight: 800; color: #0f2044; letter-spacing: 1px; margin-bottom: 16px;">INVOICE</div>
+                    <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; font-size: 0.95rem;">
+                        <div style="color: #7a8fa8; font-weight: 600; text-align: right;">Invoice Number</div>
+                        <div style="font-weight: 700; color: #0f2044; text-align: right;">{{ $invoice->invoice_number }}</div>
+                        <div style="color: #7a8fa8; font-weight: 600; text-align: right;">Invoice Date</div>
+                        <div style="font-weight: 700; color: #0f2044; text-align: right;">{{ $invoice->invoice_date->format('M d, Y') }}</div>
+                        <div style="color: #7a8fa8; font-weight: 600; text-align: right;">PO Reference</div>
+                        <div style="font-weight: 700; color: #0f2044; text-align: right;">{{ optional($invoice->purchaseOrder)->po_number ?? 'N/A' }}</div>
+                        <div style="color: #7a8fa8; font-weight: 600; text-align: right;">Payment Terms</div>
+                        <div style="font-weight: 700; color: #0f2044; text-align: right;">Net 30 Days</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bill To & Ship To -->
+            <div style="display: flex; gap: 40px; margin-bottom: 40px;">
+                <div style="flex: 1;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Bill To</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0f2044; margin-bottom: 4px;">{{ optional($invoice->purchaseOrder?->user)->name ?? 'Owner' }}</div>
+                    <div style="font-size: 0.95rem; color: #5a6a85; line-height: 1.6;">
+                        22UniMart<br>
+                        @if(optional($invoice->purchaseOrder?->user)->phone) Phone: {{ $invoice->purchaseOrder->user->phone }} @endif
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Ship To</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0f2044; margin-bottom: 4px;">{{ optional($invoice->purchaseOrder?->user)->name ?? 'Owner' }}</div>
+                    <div style="font-size: 0.95rem; color: #5a6a85; line-height: 1.6;">
+                        22UniMart<br>
+                        @if(optional($invoice->purchaseOrder?->user)->phone) Phone: {{ $invoice->purchaseOrder->user->phone }} @endif
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+                <thead>
+                    <tr>
+                        <th style="padding: 12px 0; font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 2px solid #eef2f7;">Item Name</th>
+                        <th style="padding: 12px 0; font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; border-bottom: 2px solid #eef2f7;">Qty</th>
+                        <th style="padding: 12px 0; font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; border-bottom: 2px solid #eef2f7;">Unit Price</th>
+                        <th style="padding: 12px 0; font-size: 0.8rem; font-weight: 700; color: #9daec5; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; border-bottom: 2px solid #eef2f7;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $subtotal = 0; @endphp
+                    @forelse($invoice->lines as $line)
+                        @php $subtotal += $line->invoice_line_total; @endphp
+                        <tr>
+                            <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #0f2044; font-weight: 600;">{{ optional($line->item)->name ?? 'Unknown Item' }}</td>
+                            <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #5a6a85; text-align: center;">{{ $line->quantity }}</td>
+                            <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #5a6a85; text-align: right;">RM {{ number_format($line->unit_price, 2) }}</td>
+                            <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; font-weight: 700; color: #0f2044; text-align: right;">RM {{ number_format($line->invoice_line_total, 2) }}</td>
+                        </tr>
+                    @empty
+                        @if($invoice->purchaseOrder && $invoice->purchaseOrder->quantity)
+                            @php $subtotal = $invoice->total_amount; @endphp
+                            <tr>
+                                <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #0f2044; font-weight: 600;">{{ optional($invoice->purchaseOrder->item)->name ?? 'Unknown Item' }}</td>
+                                <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #5a6a85; text-align: center;">{{ $invoice->purchaseOrder->quantity }}</td>
+                                <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; color: #5a6a85; text-align: right;">RM {{ number_format($invoice->purchaseOrder->unit_price, 2) }}</td>
+                                <td style="padding: 16px 0; border-bottom: 1px solid #f0f4f8; font-size: 0.95rem; font-weight: 700; color: #0f2044; text-align: right;">RM {{ number_format($invoice->total_amount, 2) }}</td>
+                            </tr>
+                        @endif
+                    @endforelse
+                </tbody>
+            </table>
+
+            <!-- Totals -->
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 320px;">
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 1rem; color: #5a6a85;">
+                        <span>Subtotal:</span>
+                        <span>RM {{ number_format($subtotal, 2) }}</span>
+                    </div>
+                    @if($invoice->getTotalCreditDeduction() > 0)
+                        @foreach($invoice->creditNotes as $cn)
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 1rem; color: #c0392b;">
+                            <span>Credit Applied ({{ $cn->credit_note_id }}):</span>
+                            <span>- RM {{ number_format($cn->amount, 2) }}</span>
+                        </div>
+                        @endforeach
+                    @else
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 1rem; color: #c0392b;">
+                            <span>Credit Applied:</span>
+                            <span>RM 0.00</span>
+                        </div>
+                    @endif
+                    <div style="display: flex; justify-content: space-between; padding: 16px 0; border-top: 2px solid #0f2044; font-size: 1.2rem; font-weight: 800; color: #0f2044; margin-top: 8px;">
+                        <span>Net to Pay:</span>
+                        <span>RM {{ number_format($invoice->getNetPayableAmount(), 2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Notes -->
+            <div style="margin-top: 40px; padding-top: 24px; font-size: 0.9rem; color: #7a8fa8; text-align: center; line-height: 1.6;">
+                Make all payments payable to <strong style="color: #0f2044;">{{ optional($invoice->supplier)->name ?? 'Supplier' }}</strong><br>
+                <div style="margin-top: 12px; font-weight: 700; color: #0f2044; font-size: 1rem;">Thank You For Your Business!</div>
+            </div>
+        </div>
+
+        <!-- Related Return Requests -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #eef2f7; font-size: 1.1rem; font-weight: 700; color: #0f2044;">Related Return Requests</div>
+            @if($invoice->returnRequests->count())
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 16px 24px; text-align: left; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Return Number</th>
+                                <th style="padding: 16px 24px; text-align: left; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Status</th>
+                                <th style="padding: 16px 24px; text-align: right; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Returned Qty</th>
+                                <th style="padding: 16px 24px; text-align: right; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoice->returnRequests as $rr)
+                                <tr>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8;"><a href="{{ route('supplier.returns.index') }}" style="color: #2a5fd4; text-decoration: none; font-weight: 600;">{{ $rr->return_number }}</a></td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8;">
+                                        <span style="font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:6px;background:{{ $rr->status==='Approved'?'#e8f8f0':($rr->status==='Pending'?'#fef3e2':'#fdedec') }};color:{{ $rr->status==='Approved'?'#1d8348':($rr->status==='Pending'?'#d4870a':'#c0392b') }};">{{ $rr->status }}</span>
+                                    </td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8; text-align: right; color: #3a4d6a;">{{ $rr->lines->sum('quantity') }}</td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8; text-align: right; color: #7a8fa8;">{{ $rr->request_date ? $rr->request_date->format('d M Y') : 'N/A' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div style="padding: 40px 24px; text-align: center;">
+                    <div style="color: #0f2044; font-weight: 600; margin-bottom: 8px; font-size: 1rem;">No return requests have been created for this invoice.</div>
+                </div>
+            @endif
+        </div>
+
+        <!-- Related Credit Notes -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #eef2f7; font-size: 1.1rem; font-weight: 700; color: #0f2044;">Related Credit Notes</div>
+            @if($invoice->creditNotes->count())
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 16px 24px; text-align: left; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Credit Note</th>
+                                <th style="padding: 16px 24px; text-align: left; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Status</th>
+                                <th style="padding: 16px 24px; text-align: right; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Amount</th>
+                                <th style="padding: 16px 24px; text-align: right; font-size: 0.75rem; font-weight: 700; color: #9daec5; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #eef2f7;">Issued</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoice->creditNotes as $cn)
+                                <tr>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8; font-weight: 600; color: #0f2044;">{{ $cn->credit_note_id }}</td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8;">
+                                        <span style="font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:6px;background:#f8fafc;color:#3a4d6a;border:1px solid #eef2f7;">{{ $cn->status }}</span>
+                                    </td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8; text-align: right; font-weight: 700; color: #27ae60;">RM {{ number_format($cn->amount, 2) }}</td>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid #f0f4f8; text-align: right; color: #7a8fa8;">{{ $cn->issue_date ? \Illuminate\Support\Carbon::parse($cn->issue_date)->format('d M Y') : 'N/A' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div style="padding: 40px 24px; text-align: center;">
+                    <div style="color: #0f2044; font-weight: 600; font-size: 1rem;">No credit notes have been generated for this invoice.</div>
+                </div>
+            @endif
+        </div>
+    </div> <!-- end col-main -->
+
+    <!-- Sidebar Layout -->
+    <div class="col-actions">
+        <!-- Status Card -->
+        <div class="card" style="margin-bottom: 24px; padding: 24px;">
+            <div style="font-size: 1rem; font-weight: 800; color: #0f2044; margin-bottom: 16px;">Invoice Status</div>
+            <div style="margin-bottom: 24px;">
+                @if($status === 'Paid')
+                    <div style="display: inline-block; background:#e8f8f0; color:#1d8348; padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.85rem;">Paid</div>
+                @elseif($status === 'Settled')
+                    <div style="display: inline-block; background:#e8f4fd; color:#2980b9; padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.85rem;">Settled</div>
+                @else
+                    <div style="display: inline-block; background:#fef3e2; color:#d4870a; padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.85rem;">Pending Payment</div>
+                @endif
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.9rem;">
+                <span style="color: #7a8fa8;">Invoice Date</span>
+                <span style="color: #0f2044; font-weight: 700;">{{ $invoice->invoice_date->format('M d, Y') }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.9rem;">
+                <span style="color: #7a8fa8;">Due Date</span>
+                <span style="color: #0f2044; font-weight: 700;">{{ $invoice->payment_due_date ? $invoice->payment_due_date->format('M d, Y') : 'N/A' }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                <span style="color: #7a8fa8;">Payment Terms</span>
+                <span style="color: #0f2044; font-weight: 700;">Net 30 Days</span>
+            </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="card" style="padding: 24px;">
+            <div style="font-size: 1rem; font-weight: 800; color: #0f2044; margin-bottom: 16px;">Actions</div>
+            
+            @if($status === \App\Models\Invoice::STATUS_PENDING_PAYMENT)
+                <form action="{{ route('supplier.invoices.markPaid', $invoice) }}" method="POST" onsubmit="return confirm('Are you sure you have received payment? This will lock the invoice.');">
+                    @csrf
+                    <button type="submit" class="btn-success-large">
+                        Confirm Payment Received
+                    </button>
+                </form>
+            @endif
+            
+            <a href="#" onclick="alert('PDF download is currently unavailable in the supplier portal.'); return false;" class="btn-action-outline" style="margin-bottom: 12px;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download PDF
+            </a>
+
+            <button onclick="window.print()" class="btn-action-outline" style="margin-bottom: 0;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Print Invoice
+            </button>
+        </div>
+    </div> <!-- end col-actions -->
+</div> <!-- end grid-layout -->
+@endsection

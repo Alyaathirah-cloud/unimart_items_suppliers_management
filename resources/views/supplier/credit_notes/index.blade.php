@@ -64,22 +64,18 @@
 
 @php
     $totalCN    = $creditNotes->total();
-    $unusedAmt  = \App\Models\CreditNote::where('supplier_id', auth()->user()->supplier?->id)->where('status','Unused')->sum('remaining_balance');
-    $partialAmt = \App\Models\CreditNote::where('supplier_id', auth()->user()->supplier?->id)->where('status','Partially Used')->sum('remaining_balance');
+    $unusedAmt  = \App\Models\CreditNote::where('supplier_id', auth()->user()->supplier?->id)->where('status','Unused')->sum('amount');
+    $partialAmt = \App\Models\CreditNote::where('supplier_id', auth()->user()->supplier?->id)->where('status','Partially Used')->sum('amount');
 @endphp
 
 <!-- Sidebar -->
-@include('supplier.partials.sidebar', ['active' => 'credit_notes'])
+@include('supplier.partials.sidebar', ['active' => 'credit_notes', 'hideBrandSub' => true])
 
 <div class="main">
     <div class="topbar">
         <div style="font-size:0.9rem;font-weight:600;color:#0f2044;">Credit Notes</div>
-        <div class="topbar-right">
-            <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-            <div>
-                <div style="font-size:0.85rem;font-weight:600;color:#1a2744;">{{ auth()->user()->name }}</div>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline">@csrf<button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button></form>
-            </div>
+        <div class="topbar-right" style="margin-left: auto; display: flex; align-items: center; gap: 20px;">
+            @include('supplier.components.topbar-profile')
         </div>
     </div>
 
@@ -149,7 +145,7 @@
                             @if($cn->status === 'Used')
                                 <span style="color:#9daec5;font-size:0.85rem;">RM 0.00</span>
                             @else
-                                <span class="remaining-cell">RM {{ number_format($cn->remaining_balance, 2) }}</span>
+                                <span class="remaining-cell">RM {{ number_format($cn->amount, 2) }}</span>
                             @endif
                         </td>
                         <td>

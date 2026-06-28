@@ -11,23 +11,23 @@ class RoleMiddleware
      * Handle an incoming request.
      * Expect parameter like role:admin or role:owner,supplier
      */
-    public function handle(Request $request, Closure $next, $roles)
+    public function handle(Request $request, Closure $next, $role)
     {
-        $user = $request->user();
+        $user = auth()->user();
+
         if (!$user) {
-            return redirect()->route('login');
+            return redirect('/login');
         }
 
-        $allowed = explode(',', $roles);
-        if (!in_array($user->role, $allowed)) {
-            if ($user->isOwner()) {
-                return redirect()->route('owner.dashboard')->with('error', 'Unauthorized access.');
-            } elseif ($user->isSupplier()) {
-                return redirect()->route('supplier.dashboard')->with('error', 'Unauthorized access.');
-            } elseif ($user->isAdmin()) {
-                return redirect()->route('admin.users.index')->with('error', 'Unauthorized access.');
-            }
-            return redirect('/')->with('error', 'Unauthorized access.');
+        $allowed = match($role) {
+            'owner'    => in_array($user->role, ['owner', 'staff']),
+            'admin'    => $user->role === 'admin',
+            'supplier' => $user->role === 'supplier',
+            default    => false,
+        };
+
+        if (!$allowed) {
+            abort(403, 'Unauthorized.');
         }
 
         return $next($request);

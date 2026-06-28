@@ -178,16 +178,7 @@
         </div>
                 <div class="topbar-right">
             <a href="{{ route('owner.notifications.index') }}" class="icon-btn" style="text-decoration:none;">🔔</a>
-            <div class="topbar-profile">
-                <div class="avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                <div>
-                    <div style="font-size:0.85rem;font-weight:600;color:#1a2744">{{ auth()->user()->name }}</div>
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;font-size:0.72rem;color:#9daec5;cursor:pointer;font-family:inherit;padding:0;">Logout</button>
-                    </form>
-                </div>
-            </div>
+            @include('owner.components.topbar-profile')
         </div>
     </div>
 
@@ -369,15 +360,9 @@
                     </div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Credit Note Status</div>
+                    <div class="info-label">Status</div>
                     <div class="info-value">
-                        @if($creditNote->status === 'Unused')
-                            <span class="badge badge-unused"><span class="badge-dot"></span> Unused</span>
-                        @elseif($creditNote->status === 'Partially Used')
-                            <span class="badge badge-partial"><span class="badge-dot"></span> Partially Used</span>
-                        @else
-                            <span class="badge badge-used"><span class="badge-dot"></span> Used</span>
-                        @endif
+                        <span class="badge badge-unused"><span class="badge-dot"></span> {{ $creditNote->status }}</span>
                     </div>
                 </div>
             </div>
